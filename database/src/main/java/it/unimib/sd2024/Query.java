@@ -8,6 +8,7 @@ import java.util.List;
 
 import javax.json.Json;
 import javax.json.JsonArray;
+import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
 
 import it.unimib.sd2024.types.CollectionOperation;
@@ -245,36 +246,44 @@ public class Query {
 		}
 	}
 
-	private void searchDocuments(String filePath, PrintWriter out) {
-		// Read current JSON array from file. If fails, return immediately
-		JsonObject jsonFile;
-		try {
-			jsonFile = FileOperations.read(filePath);
-		} catch (IOException e) {
-			out.println("[FAIL] Failed to read collection '" + this.collectionName + "': " + e.getMessage());
-			return;
-		}
+private void searchDocuments(String filePath, PrintWriter out) {
+	out.println("Starting search in collection '" + this.collectionName + "' with conditions: " + this.searchConditions);
+    // Read current JSON from file. If fails, return immediately
+    JsonObject jsonFile;
+    try {
+        jsonFile = FileOperations.read(filePath);
+    } catch (IOException e) {
+        out.println("[FAIL] Failed to read collection '" + this.collectionName + "': " + e.getMessage());
+        return;
+    }
 
-		// Iterate over each document in the JSON array and check if it satisfies all search conditions
-		JsonArray jsonArray = jsonFile.getJsonArray("data");
-		JsonArray result = Json.createArrayBuilder().build();
-		for (int i = 0; i < jsonArray.size(); i++) {
-			JsonObject document = jsonArray.getJsonObject(i);
-			boolean isMatch = true;
-			for (SearchCondition condition : this.searchConditions) {
-				String fieldValue = document.getString(condition.getField(), "");
-				if (!condition.isSatisfiedBy(fieldValue)) {
-					isMatch = false;
-					break;
-				}
-			}
-			// If all conditions are satisfied, add the document to the result array
-			if (isMatch) {
-				result.add(document);
-			}
-		}
-		out.println("[SUCCESS] search result: " + result);
-	}
+    JsonArray jsonArray = jsonFile.getJsonArray("data");
+    if (jsonArray == null) {
+        out.println("[ERROR] Missing 'data' array in collection file");
+        return;
+    }
+
+    // Usa JsonArrayBuilder per costruire dinamicamente il risultato
+    JsonArrayBuilder resultBuilder = Json.createArrayBuilder();
+
+    for (int i = 0; i < jsonArray.size(); i++) {
+        JsonObject document = jsonArray.getJsonObject(i);
+        boolean isMatch = true;
+        for (SearchCondition condition : this.searchConditions) {
+            String fieldValue = document.getString(condition.getField(), "");
+            if (!condition.isSatisfiedBy(fieldValue)) {
+                isMatch = false;
+                break;
+            }
+        }
+        if (isMatch) {
+            resultBuilder.add(document);
+        }
+    }
+
+    JsonArray result = resultBuilder.build();
+    out.println("[SUCCESS] search result: " + result);
+}
 
 	private void removeDocument(String filePath, PrintWriter out) {
 		// Read current JSON array from file. If fails, return immediately

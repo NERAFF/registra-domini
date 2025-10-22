@@ -54,7 +54,7 @@ public class Main {
 				System.out.println("New connection from " + client.getInetAddress().getHostAddress());
 
 				while((inputLine = in.readLine()) != null) {
-					System.out.println("Received: " + inputLine);
+					//System.out.println("Received: " + inputLine);
 					if (inputLine.equals("COMMIT")) {
 						break;
 					}
@@ -67,7 +67,10 @@ public class Main {
 					Query query = new Query(queryStrings);
 					query.execute(out);
 				} catch (Exception e) {
-					out.println(e.getMessage());
+					String errorMsg = "Error query: " + e.getMessage();
+					System.err.println("Query execution failed: " + errorMsg); // ← LOG SUL SERVER
+					e.printStackTrace(); // ← per vedere stack trace completo
+					out.println(errorMsg);
 				}
 				
 
