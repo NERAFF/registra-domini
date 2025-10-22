@@ -41,24 +41,43 @@ public class UserResource {
 	@POST
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response signinUser(SigninUserRequestBody body) throws InstantiationException {
-		// Check if the body is not null and has all the required fields valid
+	public Response signinUser(SigninUserRequestBody body) {
+		 // Validazione input
 		if (body == null || body.getEmail() == null || body.getPassword() == null) {
-			return Response.status(Status.BAD_REQUEST.getStatusCode(), "signinUser :: body must be indicated and with all fields valid").build();
+			return Response.status(Status.BAD_REQUEST)
+					.entity("signinUser :: body must be indicated and with all fields valid")
+					.build();
 		}
-		
-		// Get the user finding it on the db by id
-		User u = Queryer.queryFindUserByEmail(body.getEmail())[0];
 
-		// Check if the user is correctly obtained and if the password matches
+		// Esegui la query
+		User[] users = Queryer.queryFindUserByEmail(body.getEmail());
+
+		// Controlla se l'utente esiste
+		if (users == null || users.length == 0) {
+			return Response.status(Status.UNAUTHORIZED)
+					.entity("signinUser :: email or password may be incorrect")
+					.build();
+		}
+
+		User u = users[0];
+
+		// Verifica la password
 		try {
-			MessageDigest mdi = MessageDigest.getInstance("SHA-256");
-			if(u == null || !u.getEmail().equals(body.getEmail()) || !u.getPassword().equals(new String(mdi.digest(body.getPassword().getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8))) {
-				return Response.status(Status.NOT_FOUND.getStatusCode(), "signinUser :: email or password may be incorrect").build();
+			MessageDigest md = MessageDigest.getInstance("SHA-256");
+			byte[] hashedPassword = md.digest(body.getPassword().getBytes(StandardCharsets.UTF_8));
+			String hashedPasswordStr = new String(hashedPassword, StandardCharsets.UTF_8);
+
+			if (!u.getPassword().equals(hashedPasswordStr)) {
+				return Response.status(Status.UNAUTHORIZED)
+							.entity("signinUser :: email or password may be incorrect")
+							.build();
 			}
 		} catch (NoSuchAlgorithmException e) {
-			return Response.status(Status.INTERNAL_SERVER_ERROR.getStatusCode(), "signinUser :: failed to validate the user").build();
+			return Response.status(Status.INTERNAL_SERVER_ERROR)
+						.entity("signinUser :: failed to validate the user")
+						.build();
 		}
+
 		return Response.ok(u.info()).build();
 	}
 
