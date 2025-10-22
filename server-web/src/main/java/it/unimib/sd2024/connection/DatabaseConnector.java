@@ -62,7 +62,7 @@ public class DatabaseConnector {
 		// Send the query to the database and read the response
 		String response = "";
 		try {
-			toServer.writeBytes(message);
+			toServer.writeBytes(message+ "\n");
 			response = readFromServer(fromServer);
 		} catch (Exception e) {
 			System.err.println("[ERROR] Error while communicating with the database: " + e.getMessage());
