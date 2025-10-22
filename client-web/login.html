@@ -2,9 +2,9 @@
 <html>
 	<head>
 		<title>Login Users</title>
+		<link rel="stylesheet" href="style.css">
 	</head>
 	<body data-server-no-reload>
-		<h2>LOGIN</h2>
 		<form id="add-user">
 			<label for="input-email">Email: </label>
 			<input type="email" id="input-email" name="email" placeholder="example@gmail.com" required>
@@ -13,64 +13,73 @@
 			<input type="password" id="input-password" name="password" placeholder="password" required>
 			<p />
 			<input type="submit" value="Signin!">
+			<div id="result">
+				<script>
+					const API_URI = "http://localhost:8080";
+
+					async function handleLoginForm(event) {
+						event.preventDefault();
+
+						const email = document.getElementById('input-email').value.trim();
+						const password = document.getElementById('input-password').value.trim();
+						const resultDiv = document.getElementById('result');
+						resultDiv.innerHTML = '';
+
+						const requestBody = {
+							email: email,
+							password: password
+						};
+
+						const endpoint = `${API_URI}/users/signin`;
+
+						try {
+							const response = await fetch(endpoint, {
+								method: "POST",
+								headers: {
+									"Content-Type": "application/json",
+								},
+								body: JSON.stringify(requestBody)
+							});
+
+							// Leggi SEMPRE il corpo della risposta, anche in caso di errore HTTP
+							let data;
+							try {
+								data = await response.json();
+							} catch (parseError) {
+								// Se il corpo non è JSON valido, usa un oggetto vuoto
+								data = {};
+							}
+
+							if (response.ok) {
+								// Login riuscito
+								localStorage.setItem('sessionId', data.id);
+								window.location.href = "./index.html";
+							} else {
+								// Login fallito: mostra il payload signinUser se presente
+								if (data.signinUser !== undefined) {
+									resultDiv.innerHTML = `<p>Errore: ${JSON.stringify(data.signinUser)}</p>`;
+								} else if (data.message) {
+									resultDiv.innerHTML = `<p>Errore: ${data.message}</p>`;
+								} else {
+									resultDiv.innerHTML = `<p>Errore: credenziali non valide o server non raggiungibile.</p>`;
+								}
+							}
+						} catch (error) {
+							console.error("Errore durante la richiesta:", error);
+							resultDiv.innerHTML = `<p>Errore di rete: impossibile contattare il server.</p>`;
+						}
+					}
+
+					window.onload = init;
+
+					async function init() {
+						const form = document.getElementById('add-user');
+						form.addEventListener('submit', handleLoginForm);
+					}
+				</script>
+				
+			</div>
 		</form>
-		<p>Non hai un account? <a href="./register.html">Registrati qui</a></p>
-		<br>
-		<div id="result"></div>
-		<script>
-			const API_URI = "http://localhost:8080";
-
-			// Funzione per gestire il submit del form di login
-			async function handleLoginForm(event) {
-				event.preventDefault(); 
-
-				const email = document.getElementById('input-email').value.trim();
-				const password = document.getElementById('input-password').value.trim();
-				const resultDiv = document.getElementById('result');
-				resultDiv.innerHTML = '';
-				
-				// Costruisci il corpo della richiesta POST
-				const requestBody = {
-					email: email,
-					password: password
-				};
-				// Effettua la chiamata POST a /users/signin 
-				const endpoint = `${API_URI}/users/signin`;
-				
-
-				try {
-					let response = await fetch(endpoint, {
-						method: "POST",
-						headers: {
-							"Content-Type": "application/json",
-						},
-						body: JSON.stringify(requestBody)
-					});
-					console.log(response);
-				
-					if (!response.ok) {
-						throw new Error(`Risposta POST "${endpoint}" con errore: ${response.status} ${response.statusText}`);
-					}
-					const data = await response.json();
-
-					if (response.ok) {
-						//resultDiv.innerHTML = `<p>Accesso effettuato con successo! User ID: ${data.id}</p>`;
-						// Salva l'ID di sessione o token nel localStorage
-						localStorage.setItem('sessionId', data.id);
-						window.location.href = "./index.html";
-					} else {
-						resultDiv.innerHTML = `<p>Errore: ${data.response}</p>`;
-					}
-				} catch(error) {
-					resultDiv.innerHTML = `<p>Errore di connessione al server.</p>`;
-				}
-			}
-			window.onload = init;
-			async function init() {
-				let form = document.getElementById('add-user');
-				form.addEventListener('submit', handleLoginForm);
-			}		
-				
-		</script>
+		
 	</body>
 </html>
