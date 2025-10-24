@@ -221,9 +221,7 @@ public class Query {
 			out.println("[ERROR] Malformed collection operation (DELETE): collectionName is null");
 		}
 	}
-
 	private void insertDocument(String filePath, PrintWriter out) {
-		// Read current JSON from file. If fails, return immediately
 		JsonObject jsonFile;
 		try {
 			jsonFile = FileOperations.read(filePath);
@@ -232,61 +230,74 @@ public class Query {
 			return;
 		}
 
-		// Append the new document to the JSON array 'data' and update the JSON object
-		JsonArray jsonArray = jsonFile.getJsonArray("data");
-		jsonArray.add(this.document);
-		jsonFile.put("data", jsonArray);
+		// Ottieni l'array esistente
+		JsonArray existingArray = jsonFile.getJsonArray("data");
+		if (existingArray == null) {
+			out.println("[ERROR] Missing 'data' array in collection file");
+			return;
+		}
 
-		// Overwrite the JSON file with the updated JSON array
+		// Crea un builder e aggiungi tutti i documenti esistenti + il nuovo
+		JsonArrayBuilder arrayBuilder = Json.createArrayBuilder();
+		for (JsonObject doc : existingArray.getValuesAs(JsonObject.class)) {
+			arrayBuilder.add(doc);
+		}
+		arrayBuilder.add(this.document);
+
+		// Ricostruisci l'intero oggetto JSON con il nuovo array
+		JsonObject updatedJson = Json.createObjectBuilder()
+				.add("keyField", jsonFile.getString("keyField")) // preserva keyField
+				.add("data", arrayBuilder.build())
+				.build();
+
 		try {
-			FileOperations.write(filePath, jsonFile);
+			FileOperations.write(filePath, updatedJson);
 			out.println("[SUCCESS] Inserted document into '" + this.collectionName + "'");
 		} catch (IOException e) {
 			out.println("[FAIL] Failed to insert document into '" + this.collectionName + "': " + e.getMessage());
 		}
 	}
 
-private void searchDocuments(String filePath, PrintWriter out) {
-	out.println("Starting search in collection '" + this.collectionName + "' with conditions: " + this.searchConditions);
-    // Read current JSON from file. If fails, return immediately
-    JsonObject jsonFile;
-    try {
-        jsonFile = FileOperations.read(filePath);
-    } catch (IOException e) {
-        out.println("[FAIL] Failed to read collection '" + this.collectionName + "': " + e.getMessage());
-        return;
-    }
+	private void searchDocuments(String filePath, PrintWriter out) {
+		System.out.println("Starting search in collection '" + this.collectionName + "' with conditions: " + this.searchConditions);
+		// Read current JSON from file. If fails, return immediately
+		JsonObject jsonFile;
+		try {
+			jsonFile = FileOperations.read(filePath);
+		} catch (IOException e) {
+			out.println("[FAIL] Failed to read collectionnnn '" + this.collectionName + "': " + e.getMessage());
+			return;
+		}
 
-    JsonArray jsonArray = jsonFile.getJsonArray("data");
-    if (jsonArray == null) {
-        out.println("[ERROR] Missing 'data' array in collection file");
-        return;
-    }
+		JsonArray jsonArray = jsonFile.getJsonArray("data");
+		if (jsonArray == null) {
+			out.println("[ERROR] Missing 'data' array in collection file");
+			return;
+		}
 
-    // Usa JsonArrayBuilder per costruire dinamicamente il risultato
-    JsonArrayBuilder resultBuilder = Json.createArrayBuilder();
+		// Usa JsonArrayBuilder per costruire dinamicamente il risultato
+		JsonArrayBuilder resultBuilder = Json.createArrayBuilder();
 
-    for (int i = 0; i < jsonArray.size(); i++) {
-        JsonObject document = jsonArray.getJsonObject(i);
-        boolean isMatch = true;
-        for (SearchCondition condition : this.searchConditions) {
-            String fieldValue = document.getString(condition.getField(), "");
-            if (!condition.isSatisfiedBy(fieldValue)) {
-                isMatch = false;
-                break;
-            }
-        }
-        if (isMatch) {
-            resultBuilder.add(document);
-        }
-    }
+		for (int i = 0; i < jsonArray.size(); i++) {
+			JsonObject document = jsonArray.getJsonObject(i);
+			boolean isMatch = true;
+			for (SearchCondition condition : this.searchConditions) {
+				String fieldValue = document.getString(condition.getField(), "");
+				if (!condition.isSatisfiedBy(fieldValue)) {
+					isMatch = false;
+					break;
+				}
+			}
+			if (isMatch) {
+				resultBuilder.add(document);
+			}
+		}
 
-    JsonArray result = resultBuilder.build();
-    out.println("[SUCCESS] search result: " + result);
+		JsonArray result = resultBuilder.build();
+		out.println("[SUCCESS] search result: " + result);
 }
 
 	private void removeDocument(String filePath, PrintWriter out) {
-		// Read current JSON array from file. If fails, return immediately
 		JsonObject jsonFile;
 		try {
 			jsonFile = FileOperations.read(filePath);
@@ -295,29 +306,38 @@ private void searchDocuments(String filePath, PrintWriter out) {
 			return;
 		}
 
-		// Iterate over each document in the JSON array and remove the document with the specified ID
-		JsonArray jsonArray = jsonFile.getJsonArray("data");
-		JsonArray result = Json.createArrayBuilder().build();
+		JsonArray existingArray = jsonFile.getJsonArray("data");
+		if (existingArray == null) {
+			out.println("[ERROR] Missing 'data' array in collection file");
+			return;
+		}
+
+		String keyField = jsonFile.getString("keyField", "id"); // fallback a "id"
+		JsonArrayBuilder builder = Json.createArrayBuilder();
 		boolean found = false;
-		for (int i = 0; i < jsonArray.size(); i++) {
-			JsonObject document = jsonArray.getJsonObject(i);
-			if (!document.getString(this.collectionKeyField, "").equals(this.documentId)) {
-				result.add(document);
-			} else {
+
+		for (JsonObject doc : existingArray.getValuesAs(JsonObject.class)) {
+			String docId = doc.getString(keyField, "");
+			if (docId.equals(this.documentId)) {
 				found = true;
+			} else {
+				builder.add(doc);
 			}
 		}
 
-		if(found) {
-			jsonFile.put("data", result);
+		if (found) {
+			JsonObject updated = Json.createObjectBuilder()
+					.add("keyField", keyField)
+					.add("data", builder.build())
+					.build();
 			try {
-				FileOperations.write(filePath, jsonFile);
+				FileOperations.write(filePath, updated);
 				out.println("[SUCCESS] Removed document from '" + this.collectionName + "'");
 			} catch (IOException e) {
-				out.println("[FAIL] Failed to remove document from '" + this.collectionName + "': " + e.getMessage());
+				out.println("[FAIL] Failed to remove document: " + e.getMessage());
 			}
 		} else {
-			out.println("[FAIL] Document with '" + this.collectionKeyField + "'='" + this.documentId + "' not found in '" + this.collectionName + "'");
+			out.println("[FAIL] Document with '" + keyField + "'='" + this.documentId + "' not found");
 		}
 	}
 
