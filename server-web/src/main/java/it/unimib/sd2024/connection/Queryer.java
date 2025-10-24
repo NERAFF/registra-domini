@@ -101,25 +101,38 @@ public class Queryer {
 	 *  Returns the user found or null if not found.
 	**/
 	public static final User[] queryFindUserByEmail(String email) {
-		// Find the user in the database
-		String response = "";
-		try {
-			System.out.println("start queryFindUserByEmail");
-			response = DatabaseConnector.Communicate("SELECT \"users\"\nSEARCH \"email\" = \"" + email + "\"\nCOMMIT\n");
-			System.out.println("finish queryFindUserByEmail");
-		} catch (Exception e) {
-			System.err.println("[ERROR] Error while communicating with the database: " + e.getMessage());
-			return null;
+		if (email == null || email.trim().isEmpty()) {
+			return new User[0]; // input non valido → nessun risultato
 		}
 
-		// Check the response from the database
-		if (response.startsWith("[SUCCESS]")) {
-			Jsonb jsonb = JsonbBuilder.create();
-			User[] users = jsonb.fromJson(response.split(": ")[1], User[].class);
-			return users;
-		} else {
-			System.err.println("[ERROR] Database response: " + response);
-			return null;
+		try {
+			System.out.println("start queryFindUserByEmail");
+			// ⚠️ ESCAPE dell'email per evitare injection (vedi punto 2)
+			String safeEmail = email.replace("\"", "\\\""); // minimo escape
+			String command = "SELECT \"users\"\nSEARCH \"email\" = \"" + safeEmail + "\"\nCOMMIT\n";
+			String response = DatabaseConnector.Communicate(command);
+			System.out.println("finish queryFindUserByEmail");
+
+			if (response == null) {
+				return new User[0];
+			}
+
+			if (response.startsWith("[SUCCESS]")) {
+				String jsonPart = response.split(": ", 2)[1]; // split solo su prima occorrenza
+				if (jsonPart.trim().equals("[]")) {
+					return new User[0]; // array vuoto esplicito
+				}
+				Jsonb jsonb = JsonbBuilder.create();
+				return jsonb.fromJson(jsonPart, User[].class);
+			} else {
+				// Esempio: [EMPTY] o [ERROR] → nessun utente
+				System.out.println("[INFO] No user found for email: " + email);
+				return new User[0];
+			}
+		} catch (Exception e) {
+			System.err.println("[ERROR] Error in queryFindUserByEmail: " + e.getMessage());
+			e.printStackTrace();
+			return new User[0]; // mai null!
 		}
 	}
 
