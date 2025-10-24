@@ -39,46 +39,33 @@ public class UserResource {
 	**/
 	@Path("/signin")
 	@POST
-	@Consumes(MediaType.APPLICATION_JSON)
-	@Produces(MediaType.APPLICATION_JSON)
 	public Response signinUser(SigninUserRequestBody body) {
-		 // Validazione input
+		// Validazione input
 		if (body == null || body.getEmail() == null || body.getPassword() == null) {
 			return Response.status(Status.BAD_REQUEST)
-					.entity("signinUser :: body must be indicated and with all fields valid")
+					.entity("{\"signinUser\": \"Email and password are required\"}")
 					.build();
 		}
 
-		// Esegui la query
+		// Cerca utente per email
 		User[] users = Queryer.queryFindUserByEmail(body.getEmail());
-
-		// Controlla se l'utente esiste
 		if (users == null || users.length == 0) {
 			return Response.status(Status.UNAUTHORIZED)
-					.entity("signinUser :: email or password may be incorrect")
+					.entity("{\"signinUser\": \"Email or password may be incorrect\"}")
 					.build();
 		}
 
-		User u = users[0];
+		User user = users[0];
 
-		// Verifica la password
-		try {
-			MessageDigest md = MessageDigest.getInstance("SHA-256");
-			byte[] hashedPassword = md.digest(body.getPassword().getBytes(StandardCharsets.UTF_8));
-			String hashedPasswordStr = new String(hashedPassword, StandardCharsets.UTF_8);
-
-			if (!u.getPassword().equals(hashedPasswordStr)) {
-				return Response.status(Status.UNAUTHORIZED)
-							.entity("signinUser :: email or password may be incorrect")
-							.build();
-			}
-		} catch (NoSuchAlgorithmException e) {
-			return Response.status(Status.INTERNAL_SERVER_ERROR)
-						.entity("signinUser :: failed to validate the user")
-						.build();
+		// Verifica la password usando il metodo verifyPassword() della classe User
+		if (!user.verifyPassword(body.getPassword())) {
+			return Response.status(Status.UNAUTHORIZED)
+					.entity("{\"signinUser\": \"Email or password may be incorrect\"}")
+					.build();
 		}
 
-		return Response.ok(u.info()).build();
+		// Login riuscito: restituisci solo i dati pubblici (senza password)
+		return Response.ok(user.info()).build();
 	}
 
 	/** POST ./users/signup
@@ -89,38 +76,54 @@ public class UserResource {
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response signupUser(SignupUserRequestBody body) {
-		System.out.println("signupUser: " + body.toString());
+		System.out.println("signupUser: " + body);
 
-		// Check if the user is not null and has all the required fields valid
-		if (body == null || body.getName() == null || body.getSurname() == null || body.getEmail() == null || body.getPassword() == null) {
-			return Response.status(Status.BAD_REQUEST.getStatusCode(), "signupUser :: body must be indicated and with all fields valid").build();
-		}
-		
-		// Get the user finding it on the db by email
-		User u = Queryer.queryFindUserByEmail(body.getEmail())[0];
-
-		System.out.println("signupUser: " + u.toString());
-		
-		// Check if the user email isn't already registered
-		if (u != null && u.getEmail().equals(body.getEmail())) {
-			return Response.status(Status.CONFLICT.getStatusCode(), "signupUser :: email already registered").build();
+		// Validazione input
+		if (body == null || body.getName() == null || body.getSurname() == null || 
+			body.getEmail() == null || body.getPassword() == null) {
+			return Response.status(Status.BAD_REQUEST)
+					.entity("signupUser :: body must be indicated and with all fields valid")
+					.build();
 		}
 
-		// Add the user to the db
-		User user = null;
+		// Cerca utente per email
+		User[] usersByEmail = Queryer.queryFindUserByEmail(body.getEmail());
+		User existingUser = null;
+		if (usersByEmail != null && usersByEmail.length > 0) {
+			existingUser = usersByEmail[0];
+		}
+
+		// Controlla se l'email è già registrata
+		if (existingUser != null) {
+			return Response.status(Status.CONFLICT)
+					.entity("signupUser :: email already registered")
+					.build();
+		}
+
+		// Inserisci nuovo utente
+		User newUser;
 		try {
-			user = Queryer.queryInsertUser(new User(body.getName(), body.getSurname(), body.getEmail(), body.getPassword()));
-		} catch (InstantiationException e) {
-			return Response.status(Status.INTERNAL_SERVER_ERROR.getStatusCode(), "signupUser :: failed to create the new user").build();
+			newUser = Queryer.queryInsertUser(new User(
+				body.getName(), 
+				body.getSurname(), 
+				body.getEmail(), 
+				body.getPassword()
+			));
+		} catch (Exception e) {
+			e.printStackTrace();
+			return Response.status(Status.INTERNAL_SERVER_ERROR)
+					.entity("signupUser :: failed1 to create the new user")
+					.build();
 		}
 
-		// If the user can be correctly obtained, the response return the success, otherwise return an error
-		u = Queryer.queryFindUserById(user.getId())[0];
-		
-		if(u == null || u.getId() != user.getId()) {
-			return Response.status(Status.INTERNAL_SERVER_ERROR.getStatusCode(), "signupUser :: failed to create the new user").build();
+		if (newUser == null || newUser.getId() < 0) {
+			return Response.status(Status.INTERNAL_SERVER_ERROR)
+					.entity("signupUser :: failed2 to create the new user")
+					.build();
 		}
-		return Response.ok(u.info()).build();
+
+
+		return Response.status(Status.CREATED).entity(newUser.info()).build();
 	}
 
 	/** GET ./users/{id}
