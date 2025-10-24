@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Login Users</title>
+		<link rel="stylesheet" href="style.css">
+	</head>
+	<body data-server-no-reload>
+		<form id="add-user">
+			<h2>Login</h2>
+			<label for="input-email">Email: </label>
+			<input type="email" id="input-email" name="email" placeholder="example@gmail.com" required>
+			<p />
+			<label for="input-password">Password: </label>
+			<input type="password" id="input-password" name="password" placeholder="password" required>
+			<p />
+			<input type="submit" value="Signin!">
+			<div><p>Not registered yet? <a href="./register.html">Sign up here</a>.</p></div>
+			<div id="result"></div>
+		</form>
+
+		<script>
+			const API_URI = "http://localhost:8080";
+
+			async function handleLoginForm(event) {
+				event.preventDefault();
+
+				const email = document.getElementById('input-email').value.trim();
+				const password = document.getElementById('input-password').value.trim();
+				const resultDiv = document.getElementById('result');
+				resultDiv.innerHTML = '';
+
+				const requestBody = {
+					email: email,
+					password: password
+				};
+
+				const endpoint = `${API_URI}/users/signin`;
+
+				try {
+					const response = await fetch(endpoint, {
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+						},
+						body: JSON.stringify(requestBody)
+					});
+
+					let data;
+					try {
+						data = await response.json();
+					} catch (parseError) {
+						data = {};
+					}
+
+					if (response.ok) {
+						localStorage.setItem('sessionId', data.id);
+						// ✅ Messaggio di successo in verde
+						resultDiv.innerHTML = `<p class="success-message">Login successful! Welcome, ${data.name} ${data.surname}.</p>`;
+						// Opzionale: reindirizza dopo un attimo
+						setTimeout(() => { window.location.href = "../index.html"; }, 1500);
+					} else {
+						// ❌ Messaggio di errore in rosso
+						let errorMessage = "Login failed. Please check your credentials.";
+						if (data.signinUser) {
+							errorMessage = data.signinUser;
+						} else if (response.status === 401) {
+							errorMessage = "Invalid email or password.";
+						} else if (response.status >= 500) {
+							errorMessage = "Server error. Please try again later.";
+						}
+						resultDiv.innerHTML = `<p class="error-message">${errorMessage}</p>`;
+					}
+				} catch (error) {
+					console.error("Errore durante la richiesta:", error);
+					resultDiv.innerHTML = `<p class="error-message">Network error: unable to reach the server.</p>`;
+				}
+			}
+
+			window.onload = () => {
+				const form = document.getElementById('add-user');
+				form.addEventListener('submit', handleLoginForm);
+			};
+		</script>
+	</body>
+</html>

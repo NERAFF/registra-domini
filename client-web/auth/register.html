@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Registration Page</title>
+	<link rel="stylesheet" href="style.css">
+	<style>
+		/* Opzionale: puoi spostare questo in style.css */
+		.error-message {
+			color: red;
+			font-weight: bold;
+		}
+	</style>
+</head>
+<body data-server-no-reload>
+	<form id="register-form">
+		<h2>Registration</h2>
+		<label for="input-name">Name:</label>
+		<input type="text" id="input-name" name="name" required>
+
+		<label for="input-surname">Surname:</label>
+		<input type="text" id="input-surname" name="surname" required>
+
+		<label for="input-email">Email:</label>
+		<input type="email" id="input-email" name="email" required>
+
+		<label for="input-password">Password:</label>
+		<input type="password" id="input-password" name="password" required>
+
+		<input type="submit" value="Register">
+		<p>Already have an account? <a href="./login.html">Login here</a></p>
+		<div id="result">
+			<script>
+				const API_URI = "http://localhost:8080";
+
+				async function handleRegistration(event) {
+					event.preventDefault();
+
+					const name = document.getElementById('input-name').value.trim();
+					const surname = document.getElementById('input-surname').value.trim();
+					const email = document.getElementById('input-email').value.trim();
+					const password = document.getElementById('input-password').value.trim();
+
+					const requestBody = { name, surname, email, password };
+					const endpoint = `${API_URI}/users/signup`;
+					const resultDiv = document.getElementById('result');
+					resultDiv.innerHTML = '';
+
+					try {
+						const response = await fetch(endpoint, {
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify(requestBody)
+						});
+
+						let data = null;
+						let hasJsonBody = false;
+
+						try {
+							data = await response.json();
+							hasJsonBody = true;
+						} catch (e) {
+							// Nessun JSON nel corpo (es. errori 4xx/5xx con messaggio testuale)
+						}
+
+						if (response.ok && hasJsonBody) {
+							
+							// Mostra messaggio in rosso nel div
+							resultDiv.innerHTML = '<p class="success-message">Registration successful!</p>';
+							// Reindirizza dopo 1 secondo
+							setTimeout(() => {
+								window.location.href = './login.html';
+							}, 2000);
+						} else {
+							// ❌ Gestione errori
+							let errorMessage = "Registration failed. Please try again.";
+							if (response.status === 400) {
+								errorMessage = "Invalid input: please fill all fields correctly.";
+							} else if (response.status === 409) {
+								errorMessage = "Email already registered. Please use a different email.";
+							} else if (response.status >= 500) {
+								errorMessage = "Server error. Please try again later.";
+							}
+
+							resultDiv.innerHTML = `<p class="error-message">${errorMessage}</p>`;
+						}
+					} catch (error) {
+						console.error("Network error:", error);
+						document.getElementById('result').innerHTML = 
+							`<p class="error-message">Network error: unable to reach the server.</p>`;
+					}
+				}
+
+				window.onload = () => {
+					document.getElementById('register-form').addEventListener('submit', handleRegistration);
+				};
+			</script>
+		</div>
+	</form>
+
+	
+</body>
+</html>

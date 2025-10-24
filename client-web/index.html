@@ -1,100 +1,57 @@
 <!DOCTYPE html>
 <html>
-	<head>
-		<title>Homepage</title>
-	</head>
-	<body data-server-no-reload>
-		<nav>
-			<a href="index.html">Cerca Dominio</a>
-			<a href="mydomain.html">I miei domini</a>
-			<a href="login.html">Esci</a>
-		</nav>
-		<h2>Domain System</h2>
-		<div id="nameUser"></div>
-		<form id="find-domain">
-			<label for="domainName">Inserisci il nome del dominio che desideri cercare:</label><br>
-			<input type="text" id="domainName" name="domain" placeholder="Es. esempio.com" required>
-			<br><br>
-			<input type="submit" value="Cerca">
-		</form>
-		<div id="result"></div>
-		<script>
-			const API_URI = "http://localhost:8080";
-			async function handleFindDomainForm(event) {
-				//TO-DO
-				event.preventDefault();
-				const domainName = document.getElementById('domainName').value.trim();
-				const resultDiv = document.getElementById('result');
-				resultDiv.innerHTML = ''; // Clear previous results
+  <head>
+    <link rel="stylesheet" type="text/css" href="style.css">
 
+    <title>Domini</title>
+  </head>
+  <body data-server-no-reload>
+    <h2>Domini</h2>
 
-				try {
-					const response = await fetch(`${API_URI}/domains/${domainName}`);
-					const data = await response.json();
-					
-					if (data.response.status == 'available') {//dominio disponibile 
-						//form per l'acquisto del dominio
-						resultDiv.innerHTML = ` 
-							<form id="buy-domain">
-							<p>Il dominio ${data.response.value} è disponibile!</p>
-							<input type="submit" value="Acquista Dominio" onclick="acquistaDominio(${data.response.value})">
-							</form>
-						`;
-					} 
-					
-					else {
-						resultDiv.innerHTML = `
-							<p>Il dominio ${data.response.value} non è disponibile</p>
-							<p>Nome: ${data.response.ownerName} Cognome: ${data.response.ownerSurname} Email: ${data.response.ownerEmail} Data di scadenza: ${data.response.expiryDate}</p>
-						`;
-					}
-					
-				} catch (error) {
-					resultDiv.innerHTML = `<p>Errore di connessione al server.</p>`;
-				}
-		
-			}
-			function acquistaDominio(domain) {
-				const typeOp= "registration";
-				window.location.href = `./buyDomain.html?domain=${domain}&Operationtype=${typeOp}`;
-			}
-			
-			window.onload = init;
+    <form id="cerca-domini">
+      <label for="id">Cerca dominio: </label>
+      <input type="text" id="dom" name="cerca-dominio">
+      <button type="submit" id="dominio">Cerca</button>
+    </form>
 
-			async function init() {
-				const sessionId = localStorage.getItem('sessionId');
+    <p id="risultato"></p>
+    <div id="acq"></div>
+    <p id="err"></p>
+    <br>
 
-				if (!sessionId) {
-					// Se l'ID di sessione non è presente, redirige alla pagina di login
-					window.location.href = "login.html";
-					return;
-				}
-				
-				
-				// Aggiunge l'event per il form
-				const form = document.getElementById('find-domain');
-				form.addEventListener('submit', handleFindDomainForm);
+    <h3>Domini registrati:</h3>
+    <table border="1">
+        <thead>
+            <tr>
+            <th>Dominio</th>
+            <th>Data di registrazione</th>
+            <th>Data di scadenza</th>
+            <th>Rinnova</th>
+            </tr>
+        </thead>
+        <tbody id="domini-utente">
+        </tbody>
+    </table>
+    <br>
 
+    <h3>Ordini:</h3>
+    <table border="1">
+        <thead>
+            <tr>
+            <th>Dominio</th>
+            <th>Data dell'ordine</th>
+            <th>Oggetto dell'ordine</th>
+            <th>Quota pagata</th>
+            </tr>
+        </thead>
+        <tbody id="ordini-utente">
+        </tbody>
+    </table>
+    <br><br>
 
-				await getInfoUser(sessionId);
-			}
+    <button type="button" id="esci">Esci</button>
 
-			async function getInfoUser(){
-				try {
-					const response = await fetch(`${API_URI}/users/${localStorage.getItem('sessionId')}`);
+    <script src="domini.js"></script>
 
-					if (!response.ok)
-						throw new Error(`Errore nella risposta: ${response.status} ${response.statusText}`);
-
-					const data = await response.json();
-
-					return data;
-				} catch (error) {
-					console.error(`Impossibile eseguire la richiesta "${endpoint}":`, error);
-				}
-				
-			}
-
-		</script>
-	</body>
+  </body>
 </html>
