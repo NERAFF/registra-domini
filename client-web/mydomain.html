@@ -26,75 +26,47 @@
 	</table>
 	<script>
 	  const API_URI = "http://localhost:8080";
-	  
-	  window.onload = init();
 
 	  async function init() {
-		const userId = '123'; // Sostituisci con l'ID dell'utente reale
+		const userId = localStorage.getItem('sessionId');
+		if (!userId) {
+			window.location.href = './auth/login.html';
+			return;
+		}
 
 		try {
 		  const response = await fetch(`${API_URI}/users/${userId}/domains`);
 		  
 		  if (!response.ok) {
+			if (response.status === 404) {
+				console.log("User not found or has no domains.");
+				document.getElementById('domain-table-body').innerHTML = '<tr><td colspan="4">No domains found.</td></tr>';
+			}
 			throw new Error(`Errore nella risposta: ${response.status} ${response.statusText}`);
 		  }
 
 		  const data = await response.json();
 		  populateDomainTable(data);
 		} catch (error) {
-		  console.error('Si è verificato un errore durante il recupero dei dati:', error);
+		  console.error('An error occurred while fetching data:', error);
 		}
-		const mockDomains = generateMockData(5); // Genera 5 domini di mock data
-		populateDomainTable(mockDomains);
 	  }
 
 	  function populateDomainTable(domains) {
 		const tbody = document.getElementById('domain-table-body');
+		tbody.innerHTML = ''; // Clear existing rows
 
 		domains.forEach(domain => {
 		  const row = tbody.insertRow();
 
-		  const nameCell = row.insertCell();
-		  nameCell.textContent = domain.name;
-
-		  const registrationDateCell = row.insertCell();
-		  registrationDateCell.textContent = domain.registration_date;
-		  const expireationDateCell = row.insertCell();
-		  expireationDateCell.textContent = domain.expiration_date;
-		  
-		  const statusCell = row.insertCell();
-		  statusCell.textContent = domain.status; 
-		  //se il dominio è suo possibilita rinnovo
-				//window.location.href = "./buyDomain.html?domain=${domain}&typeOperation="renew"};
-
-
+		  row.insertCell().textContent = domain.name;
+		  // Use lastContract properties which match the Java model
+		  row.insertCell().textContent = new Date(domain.lastContract.acquisitionDate).toLocaleDateString('it-IT');
+		  row.insertCell().textContent = new Date(domain.lastContract.expirationDate).toLocaleDateString('it-IT');
+		  row.insertCell().textContent = domain.status;
 		});
 	  }
-	function generateMockData(numDomains) {
-		const mockData = [];
-
-		const statuses = ['available', 'acquiring', 'registered', 'expired'];
-
-		for (let i = 1; i <= numDomains; i++) {
-			const domain = {
-			name: `example${i}.com`,
-			registration_date: randomDate(new Date(2010, 0, 1), new Date()),
-			expiration_date: randomDate(new Date(2010, 0, 1), new Date()),
-			status: statuses[Math.floor(Math.random() * statuses.length)]
-			};
-
-			mockData.push(domain);
-		}
-
-		return mockData;
-	}
-
-	// Funzione per generare una data casuale tra due date specificate
-	function randomDate(start, end) {
-		return new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
-	}
+	  window.onload = init;
 	</script>
   </body>
 </html>
-
-
