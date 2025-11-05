@@ -23,6 +23,9 @@ public class Domain {
 	private float monthlyCost;
 	private Date lastUpdateDate;
 
+	 // ✅ Costruttore di default per JSON-B
+    public Domain() {}
+
 	public Domain(String name,  float monthlyCost) throws IllegalArgumentException {
 		if (!Pattern.matches("^" + DOMAIN_REGEX + "$", name)) {
 			throw new IllegalArgumentException("Invalid name value. Must match the DOMAIN_REGEX");

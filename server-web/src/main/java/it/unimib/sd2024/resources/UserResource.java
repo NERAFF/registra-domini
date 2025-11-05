@@ -1,11 +1,5 @@
 package it.unimib.sd2024.resources;
 
-import java.util.List;
-import java.util.ArrayList;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
@@ -21,8 +15,7 @@ import it.unimib.sd2024.request.SignupUserRequestBody;
 import it.unimib.sd2024.models.User;
 import it.unimib.sd2024.connection.Queryer;
 import it.unimib.sd2024.models.Domain;
-import it.unimib.sd2024.models.Operation;
-import it.unimib.sd2024.models.DomainStatus;
+
 
 /** Resource "./users"
  *  This class is a RESTfull resource that allows to manage users. It allows to:
@@ -133,14 +126,13 @@ public class UserResource {
 	@GET
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getUserById(@PathParam("userId") Long userId) {
-		// Get the user finding it on the db by id
-		User u = Queryer.queryFindUserById(userId)[0];
-		
-		// Check if the user is correctly obtained
-		if (u == null || u.getId() != userId) {
-			return Response.status(Status.NOT_FOUND.getStatusCode(), "getUserById :: user not found").build();
+		User[] users = Queryer.queryFindUserById(userId);
+		if (users == null || users.length == 0) {
+			return Response.status(Status.NOT_FOUND).build();
 		}
-		return Response.ok(u.info()).build();
+		
+		User user = users[0];
+		return Response.ok(user).build();
 	}
 
 	/** GET ./user/{id}/domains
@@ -150,28 +142,16 @@ public class UserResource {
 	@GET
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getUserDomainsByID(@PathParam("userId") Long userId) {
-		// Get the user finding it on the db by id
-		User u = Queryer.queryFindUserById(userId)[0];
-		if(u == null) {
+		User[] users = Queryer.queryFindUserById(userId);
+		if(users == null || users.length == 0) {
 			return Response.status(Status.NOT_FOUND.getStatusCode(), "getUserDomainsByID :: user not found").build();
 		}
+		User user = users[0];
 
-		// Get all the operations made by the user
-		Operation[] operations = Queryer.queryFindOperations(u, null, null);
-		List<Domain> domains = new ArrayList<Domain>();
-		for(Operation operation : operations) {
-			// Consider only the domain that are currently registered or expired (not buyed again by someone else)
-			Domain operationDomain = operation.getDomain();
-			if(operationDomain != null && (operationDomain.getStatus() == DomainStatus.REGISTERED || operationDomain.getStatus() == DomainStatus.EXPIRED)) {
-				// Check if the last contract for the domain is one of the user
-				if (operationDomain.getLastContract().getOwner().getId() == u.getId()) {
-					// Check if the domain is not already in the list
-					if (!domains.contains(operationDomain)) {
-						domains.add(operationDomain);
-					}
-				}
-			}
-		}
+		// The correct way is to query domains where the last contract owner is the user.
+		// This requires a new method in Queryer.
+		Domain[] domains = Queryer.queryFindDomainsByOwner(user);
+
 		return Response.ok(domains).build();
 	}
 }
