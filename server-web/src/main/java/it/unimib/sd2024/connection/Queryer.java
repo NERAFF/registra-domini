@@ -96,6 +96,31 @@ public class Queryer {
 		}
 	}
 
+	/** queryFindDomainsByOwner()
+	 *  Queries the database for domains owned by a specific user.
+	 *  Returns an array of domains found.
+	**/
+	public static final Domain[] queryFindDomainsByOwner(User owner) {
+		if (owner == null) {
+			return new Domain[0];
+		}
+		try {
+			String command = "SELECT \"domains\"\nSEARCH \"lastContract.owner.id\" = \"" + owner.getId() + "\"\nCOMMIT\n";
+			String response = DatabaseConnector.Communicate(command);
+
+			if (response != null && response.startsWith("[SUCCESS]")) {
+				String jsonPart = response.split(": ", 2)[1];
+				if (jsonPart.trim().equals("[]")) {
+					return new Domain[0];
+				}
+				return JsonbBuilder.create().fromJson(jsonPart, Domain[].class);
+			}
+		} catch (Exception e) {
+			System.err.println("[ERROR] Error in queryFindDomainsByOwner: " + e.getMessage());
+		}
+		return new Domain[0];
+	}
+
 	/** queryFindUserByEmail()
 	 *  Queries the database for a find operation on users with the same email as the one passed as a parameter.
 	 *  Returns the user found or null if not found.
@@ -119,6 +144,8 @@ public class Queryer {
 
 			if (response.startsWith("[SUCCESS]")) {
 				String jsonPart = response.split(": ", 2)[1]; // split solo su prima occorrenza
+				System.out.println("jsonPart: " + jsonPart);
+
 				if (jsonPart.trim().equals("[]")) {
 					return new User[0]; // array vuoto esplicito
 				}
@@ -141,23 +168,34 @@ public class Queryer {
 	 *  Returns the user found or null if not found.
 	**/
 	public static final User[] queryFindUserById(Long userId) {
-		// Find the user in the database
-		String response = "";
-		try {
-			response = DatabaseConnector.Communicate("SELECT \"users\"\nSEARCH \"id\" = " + userId + "\nCOMMIT\n");
-		} catch (Exception e) {
-			System.err.println("[ERROR] Error while communicating with the database: " + e.getMessage());
-			return null;
+		if (userId == null || userId <= 0) {
+			return new User[0]; // input non valido
 		}
 
-		// Check the response from the database
-		if (response.startsWith("[SUCCESS]")) {
-			Jsonb jsonb = JsonbBuilder.create();
-			User[] users = jsonb.fromJson(response.split(": ")[1], User[].class);
-			return users;
-		} else {
-			System.err.println("[ERROR] Database response: " + response);
-			return null;
+		try {
+			String command = "SELECT \"users\"\nSEARCH \"id\" = \"" + userId + "\"\nCOMMIT\n";
+			String response = DatabaseConnector.Communicate(command);
+
+			if (response == null) {
+				return new User[0];
+			}
+
+			if (response.startsWith("[SUCCESS]")) {
+				String jsonPart = response.split(": ", 2)[1];
+				if (jsonPart.trim().equals("[]")) {
+					return new User[0]; // array vuoto esplicito
+				}
+				Jsonb jsonb = JsonbBuilder.create();
+				return jsonb.fromJson(jsonPart, User[].class);
+			} else {
+				// [EMPTY], [ERROR], ecc. → nessun risultato
+				System.out.println("[INFO] No user found for id: " + userId);
+				return new User[0];
+			}
+		} catch (Exception e) {
+			System.err.println("[ERROR] Error in queryFindUserById: " + e.getMessage());
+			e.printStackTrace();
+			return new User[0]; // mai null!
 		}
 	}
 
@@ -195,7 +233,7 @@ public class Queryer {
 			String query = "SELECT \"operations\"\nSEARCH ";
 			List<String> filters = new ArrayList<String>();
 			if (userFilter != null) {
-				filters.add("owner = \"" + userFilter.getId() + "\"");
+				filters.add("\"owner.id\" = \"" + userFilter.getId() + "\""); // This was correct, but good to confirm
 			}
 			if (domainFilter != null) {
 				filters.add("domain = \"" + domainFilter.getName() + "\"");

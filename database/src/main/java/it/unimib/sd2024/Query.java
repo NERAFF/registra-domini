@@ -281,11 +281,20 @@ public class Query {
 		for (int i = 0; i < jsonArray.size(); i++) {
 			JsonObject document = jsonArray.getJsonObject(i);
 			boolean isMatch = true;
+
 			for (SearchCondition condition : this.searchConditions) {
-				String fieldValue = document.getString(condition.getField(), "");
-				if (!condition.isSatisfiedBy(fieldValue)) {
-					isMatch = false;
-					break;
+				String fieldName = condition.getField();
+				String fieldValue = null;
+				if (fieldName.contains(".")) {
+					String[] parts = fieldName.split("\\.", 2);
+					if (document.containsKey(parts[0]) && document.get(parts[0]) instanceof JsonObject) {
+						JsonObject nested = document.getJsonObject(parts[0]);
+						if (nested.containsKey(parts[1])) {
+							fieldValue = jsonValueToString(nested.get(parts[1]));
+						}
+					}
+				} else if (document.containsKey(fieldName)) {
+					fieldValue = jsonValueToString(document.get(fieldName));
 				}
 			}
 			if (isMatch) {
@@ -317,7 +326,8 @@ public class Query {
 		boolean found = false;
 
 		for (JsonObject doc : existingArray.getValuesAs(JsonObject.class)) {
-			String docId = doc.getString(keyField, "");
+			String docId = jsonValueToString(doc.get(keyField));
+			if (docId == null) docId = "";			
 			if (docId.equals(this.documentId)) {
 				found = true;
 			} else {
@@ -347,5 +357,24 @@ public class Query {
 				+ ",\n\tcollectionKeyField=" + collectionKeyField + ",\n\tdocumentOperation=" + documentOperation
 				+ ",\n\tdocument=" + document + ",\n\tsearchConditions=" + searchConditions + ",\n\tdocumentId="
 				+ documentId + "\n}";
+	}
+
+
+	private String jsonValueToString(javax.json.JsonValue value) {
+		if (value == null) return null;
+		switch (value.getValueType()) {
+			case STRING:
+				return ((javax.json.JsonString) value).getString();
+			case NUMBER:
+				return value.toString(); // restituisce "123" per JsonNumber
+			case TRUE:
+				return "true";
+			case FALSE:
+				return "false";
+			case NULL:
+				return null;
+			default:
+				return value.toString();
+		}
 	}
 }
