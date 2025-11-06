@@ -1,6 +1,6 @@
 package it.unimib.sd2024.models;
 
-import java.util.Date;
+import java.time.LocalDate;
 import java.util.regex.Pattern;
 
 /** CLASS Domain
@@ -21,7 +21,7 @@ public class Domain {
 	private Acquiring lastAcquiring;
 	private Contract lastContract;
 	private float monthlyCost;
-	private Date lastUpdateDate;
+	private LocalDate lastUpdateDate;
 
 	 // ✅ Costruttore di default per JSON-B
     public Domain() {}
@@ -38,9 +38,14 @@ public class Domain {
 		this.lastAcquiring = null;
 		this.lastContract = null;
 		this.monthlyCost = monthlyCost;
-		this.lastUpdateDate = new Date();
+		this.lastUpdateDate = LocalDate.now();
 	}
 
+	public void setName(String name) {
+		// Opzionale: valida il nome qui se vuoi
+		this.name = name;
+		this.lastUpdateDate = LocalDate.now(); // opzionale: aggiorna lastUpdateDate?
+	}
 	public String getName() {
 		return this.name;
 	}
@@ -51,7 +56,7 @@ public class Domain {
 
 	public void setStatus(DomainStatus status) {
 		this.status = status;
-		this.lastUpdateDate = new Date();
+		this.lastUpdateDate = LocalDate.now();
 	}
 
 	public Acquiring getLastAcquiring() {
@@ -60,7 +65,7 @@ public class Domain {
 
 	public void setLastAcquiring(Acquiring lastAcquiring) {
 		this.lastAcquiring = lastAcquiring;
-		this.lastUpdateDate = new Date();
+		this.lastUpdateDate = LocalDate.now();
 	}
 
 	public Contract getLastContract() {
@@ -69,7 +74,7 @@ public class Domain {
 
 	public void setLastContract(Contract lastContract) {
 		this.lastContract = lastContract;
-		this.lastUpdateDate = new Date();
+		this.lastUpdateDate = LocalDate.now();
 	}
 
 	public float getMonthlyCost() {
@@ -81,10 +86,14 @@ public class Domain {
 			throw new IllegalArgumentException("Invalid monthly cost value. Must be greater than or equal to 0,00");
 		}
 		this.monthlyCost = monthlyCost;
-		this.lastUpdateDate = new Date();
+		this.lastUpdateDate = LocalDate.now();
 	}
 
-	public Date getLastUpdateDate() {
+	// Setter per lastUpdateDate (necessario per leggere dal JSON)
+	public void setLastUpdateDate(LocalDate lastUpdateDate) {
+		this.lastUpdateDate = lastUpdateDate;
+	}
+	public LocalDate getLastUpdateDate() {
 		return this.lastUpdateDate;
 	}
 

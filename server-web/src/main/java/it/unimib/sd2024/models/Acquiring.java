@@ -1,32 +1,38 @@
 package it.unimib.sd2024.models;
 
-import java.util.Date;
+import java.time.LocalDate;
 
 public class Acquiring {
-    private User user;
-	private Date startAquisitionDate;
-    private Date finishAquisitionDate;
+    private UserInfo user;
+	private LocalDate startAquisitionDate;
+    private LocalDate finishAquisitionDate;
 
-    public Acquiring(User user, Date startAquisitionDate) {
+    // ✅ Costruttore di default per JSON-B
+    public Acquiring() {}
+    public Acquiring(UserInfo user, LocalDate startAquisitionDate) {
         this.user = user;
         this.startAquisitionDate = startAquisitionDate;
         this.finishAquisitionDate = null;
     }
 
-    public User getUser() {
+    public void setUser(UserInfo user) {
+        this.user = user;
+    }
+    public UserInfo getUser() {
         return this.user;
     }
-
-    public Date getStartAquisitionDate() {
+    public void setStartAquisitionDate(LocalDate startAquisitionDate) {
+        this.startAquisitionDate = startAquisitionDate;
+    }
+    public LocalDate getStartAquisitionDate() {
         return this.startAquisitionDate;
     }
-
-    public Date getFinishAquisitionDate() {
-        return this.finishAquisitionDate;
+    public void setFinishAquisitionDate(LocalDate finishAquisitionDate) {
+        this.finishAquisitionDate = finishAquisitionDate;
     }
 
-    public void setFinishAquisitionDate(Date finishAquisitionDate) {
-        this.finishAquisitionDate = finishAquisitionDate;
+    public LocalDate getFinishAquisitionDate() {
+        return this.finishAquisitionDate;
     }
 
     @Override

@@ -1,27 +1,37 @@
 package it.unimib.sd2024.models;
 
-import java.util.Date;
+import java.time.LocalDate;
 
 public class Contract {
-	private User owner;
-	private Date acquisitionDate;
-	private Date expirationDate;
+	private UserInfo owner;
+	private LocalDate acquisitionDate;
+	private LocalDate expirationDate;
 
-	public Contract(User owner, Date acquisitionDate, Date expirationDate) {
+	// ✅ Costruttore di default per JSON-B
+	public Contract() {}
+	public Contract(UserInfo owner, LocalDate acquisitionDate, LocalDate expirationDate) {
 		this.owner = owner;
 		this.acquisitionDate = acquisitionDate;
 		this.expirationDate = expirationDate;
 	}
 
-	public User getOwner() {
+	public void setOwner(UserInfo owner) {
+		this.owner = owner;
+	}
+	public UserInfo getOwner() {
 		return this.owner;
 	}
 
-	public Date getAcquisitionDate() {
+	public void setAcquisitionDate(LocalDate acquisitionDate) {
+		this.acquisitionDate = acquisitionDate;
+	}
+	public LocalDate getAcquisitionDate() {
 		return this.acquisitionDate;
 	}
-
-	public Date getExpirationDate() {
+	public void setExpirationDate(LocalDate expirationDate) {
+		this.expirationDate = expirationDate;
+	}
+	public LocalDate getExpirationDate() {
 		return this.expirationDate;
 	}
 

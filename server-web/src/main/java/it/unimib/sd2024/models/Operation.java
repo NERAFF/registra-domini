@@ -1,6 +1,6 @@
 package it.unimib.sd2024.models;
 
-import java.util.Date;
+import java.time.LocalDate;
 
 /** CLASS Whois
  *  Represents the raw entity structure of a whois resource, a contract associated with an operation carried out by a user for a specific domain.
@@ -15,15 +15,17 @@ public class Operation {
 	private Domain domain;
 	private OperationType type;
 	private float cost;
-	private Date date;
+	private LocalDate date;
 
+	// ✅ Costruttore di default per JSON-B
+	public Operation() {}
 	public Operation(User owner, Domain domain, OperationType type, int monthDuration) {
 		// Set up basic domain purchase information
 		this.owner = owner;
 		this.domain = domain;
 		this.type = type;
 		this.cost = domain.getMonthlyCost()*monthDuration;
-		this.date = new Date();
+		this.date = LocalDate.now();
 	}
 	
 	public User getOwner() {
@@ -34,8 +36,12 @@ public class Operation {
 		return this.domain;
 	}
 	
-	public Date getDate() {
+	public LocalDate getDate() {
 		return this.date;
+	}
+
+	public void setDate(LocalDate date) {
+		this.date = date;
 	}
 
 	public OperationType getType() {

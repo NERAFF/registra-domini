@@ -2,9 +2,9 @@ package it.unimib.sd2024.models;
 
 import java.util.regex.Pattern;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Date;
 import java.util.Base64;
 
 public class User {
@@ -17,8 +17,8 @@ public class User {
     private String surname;
     private String email;
     private String password; // conterrà l'hash in Base64
-    private Date creationDate;
-    private Date lastUpdateDate;
+    private LocalDate creationDate;
+    private LocalDate lastUpdateDate;
 
     // ✅ Costruttore di default per JSON-B
     public User() {}
@@ -36,7 +36,7 @@ public class User {
         this.surname = surname;
         this.email = email;
         this.password = hashPasswordSHA256(password); // ← hash coerente
-        this.creationDate = new Date();
+        this.creationDate = LocalDate.now();
         this.lastUpdateDate = this.creationDate;
     }
 
@@ -46,15 +46,17 @@ public class User {
     public String getSurname() { return surname; }
     public String getEmail() { return email; }
     public String getPassword() { return password; }
-    public Date getCreationDate() { return creationDate; }
-    public Date getLastUpdateDate() { return lastUpdateDate; }
+    public LocalDate getCreationDate() { return creationDate; }
+    public LocalDate getLastUpdateDate() { return lastUpdateDate; }
 
     // ✅ Setter SENZA validazione (per JSON-B)
     public void setId(Long id) { this.id = id; }
-    public void setName(String name) { this.name = name; this.lastUpdateDate = new Date(); }
-    public void setSurname(String surname) { this.surname = surname; this.lastUpdateDate = new Date(); }
-    public void setEmail(String email) { this.email = email; this.lastUpdateDate = new Date(); }
-    public void setPassword(String password) { this.password = password; this.lastUpdateDate = new Date(); }
+    public void setName(String name) { this.name = name; this.lastUpdateDate = LocalDate.now(); }
+    public void setSurname(String surname) { this.surname = surname; this.lastUpdateDate = LocalDate.now(); }
+    public void setEmail(String email) { this.email = email; this.lastUpdateDate = LocalDate.now(); }
+    public void setPassword(String password) { this.password = password; this.lastUpdateDate = LocalDate.now(); }
+    public void setCreationDate(LocalDate creationDate) { this.creationDate = creationDate; }
+    public void setLastUpdateDate(LocalDate lastUpdateDate) { this.lastUpdateDate = lastUpdateDate; }
 
     // ✅ Metodo statico per hashare con SHA-256 + Base64
     public static String hashPasswordSHA256(String password) {
