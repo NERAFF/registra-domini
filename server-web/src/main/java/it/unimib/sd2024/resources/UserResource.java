@@ -142,16 +142,26 @@ public class UserResource {
 	@GET
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getUserDomainsByID(@PathParam("userId") Long userId) {
+		// 1. Validazione dell'input
+		if (userId == null || userId <= 0) {
+			return Response.status(Status.BAD_REQUEST).entity("{\"error\":\"Invalid user ID\"}").build();
+		}
+
+		// 2. Cerca l'utente nel database
 		User[] users = Queryer.queryFindUserById(userId);
-		if(users == null || users.length == 0) {
-			return Response.status(Status.NOT_FOUND.getStatusCode(), "getUserDomainsByID :: user not found").build();
+		if (users == null || users.length == 0) {
+			return Response.status(Status.NOT_FOUND).entity("{\"error\":\"User not found\"}").build();
 		}
 		User user = users[0];
-
-		// The correct way is to query domains where the last contract owner is the user.
-		// This requires a new method in Queryer.
+		//STAMPA UTENTE
+		System.out.println("User found: " + user.toString());
+		// 3. Recupera i domini associati all'utente
 		Domain[] domains = Queryer.queryFindDomainsByOwner(user);
-
+		//stampa
+		for (Domain d : domains) {
+			System.out.println(d.toString());
+		}
+		// 4. Restituisci la lista di domini (anche se vuota)
 		return Response.ok(domains).build();
 	}
 }
