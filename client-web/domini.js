@@ -2,13 +2,27 @@ const API_URI = "http://localhost:8080";
 
 // Utility: formatta una data ISO in stringa leggibile (opzionale)
 function formatDate(dateStr) {
-    if (!dateStr) return "N/A";
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('it-IT');
+    if (!dateStr) return 'N/A';
+
+    // Pulisci il formato non standard
+    const cleaned = dateStr.replace(/\[.*\]$/, '');
+
+    const date = new Date(cleaned + 'T00:00:00');
+    if (date.toString() === 'Invalid Date') {
+        console.warn('Data non valida:', dateStr);
+        return 'Data errata';
+    }
+
+    // Formatta in italiano: gg/mm/aaaa, hh:mm
+    return new Intl.DateTimeFormat('it-IT', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).format(date);
 }
 
 // === 1. Blocca (avvia acquisizione) un dominio ===
-async function lockDominio(dominio, userId, tipologia) {
+async function lockDominio(dominio, userId) {
     // tipologia: "acquisto" → registrazione, "rinnovo" → non usato qui (rinnovo è PUT)
     try {
         const response = await fetch(`${API_URI}/domains/new`, {
@@ -26,23 +40,30 @@ async function lockDominio(dominio, userId, tipologia) {
 
         if (response.ok) {
             console.log('Dominio bloccato con successo');
+            return true; // Successo
         } else if (response.status === 409) {
             errDiv.innerText = 'Il dominio non è disponibile per l’acquisto.';
         } else if (response.status === 400) {
             errDiv.innerText = 'Parametri non validi.';
+        } else if (response.status === 403) {
+            errDiv.innerText = 'Azione non permessa. Il dominio potrebbe essere già registrato da un altro utente.';
         } else {
             errDiv.innerText = 'Errore durante il blocco del dominio.';
         }
+        return false; // Fallimento
     } catch (error) {
         console.error('Errore di rete:', error);
         document.getElementById('err').innerText = 'Errore di connessione al server.';
+        return false; // Fallimento
     }
 }
 
 // === 2. Cerca un dominio ===
-async function cercaDominio(userId) {
+async function cercaDominio(event, userId) {
+    event.preventDefault(); // Impedisce il refresh della pagina
+
     const dominio = document.getElementById('dom').value.trim();
-    if (!dominio) return;
+    if (!dominio) return; // Se il campo è vuoto, non fare nulla
     await ricercaDominio(dominio, userId);
 }
 
@@ -59,42 +80,54 @@ async function ricercaDominio(dominio, userId) {
     try {
         const response = await fetch(`${API_URI}/domains/${encodeURIComponent(dominio)}`);
 
-        if (response.status === 404) {
-            // Dominio NON esiste → disponibile
-            risultatoDiv.innerText = 'Il dominio è libero';
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.innerText = 'Acquista';
-            btn.addEventListener('click', () => lockDominio(dominio, userId, 'acquisto'));
-            acqDiv.appendChild(btn);
-        } else if (response.ok) {
-            const data = await response.json(); // { name, status, lastContract: { owner: { name, surname, email }, expirationDate }, ... }
+        if (response.ok) {
+            const data = await response.json(); // { status, ownerId, ownerName, ownerSurname, ownerEmail, expirationDate }
+            
+            switch (data.status) {
+                case 'AVAILABLE':
+                case 'EXPIRED':
+                    risultatoDiv.innerText = data.status === 'AVAILABLE' 
+                        ? 'Il dominio è libero.' 
+                        : 'Il dominio è scaduto e può essere riacquistato.';
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.innerText = 'Acquista';
+                    btn.addEventListener('click', async () => {
+                        const locked = await lockDominio(dominio, userId);
+                        if (locked) {
+                            window.location.href = `acquisto.html?dominio=${encodeURIComponent(dominio)}&id=${userId}&tipo=acquisto`;
+                        }
+                    });
+                    acqDiv.appendChild(btn);
+                    break;
 
-            if (data.status === 'REGISTERED' || data.status === 'ACQUIRING') {
-                risultatoDiv.innerText = 'Il dominio è occupato da:';
-                const owner = data.lastContract?.owner || {};
-                const expDate = data.lastContract?.expirationDate || 'N/A';
-                const p = document.createElement('p');
-                p.innerText = `${owner.name || 'N/A'} ${owner.surname || 'N/A'} (${owner.email || 'N/A'}) e scade il ${formatDate(expDate)}`;
-                acqDiv.appendChild(p);
-            } else if (data.status === 'EXPIRED') {
-                risultatoDiv.innerText = 'Il dominio è scaduto e può essere riacquistato.';
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.innerText = 'Acquista';
-                btn.addEventListener('click', () => lockDominio(dominio, userId, 'acquisto'));
-                acqDiv.appendChild(btn);
+                case 'ACQUIRING':
+                case 'REGISTERED':
+                    risultatoDiv.innerText = data.status === 'ACQUIRING'
+                        ? 'Dominio in fase di acquisizione da:'
+                        : 'Il dominio è occupato da:';
+                    const p = document.createElement('p');
+                    const ownerInfo = `${data.ownerName || 'N/A'} ${data.ownerSurname || 'N/A'} (${data.ownerEmail || 'N/A'})`;
+                    const expirationInfo = data.expirationDate ? ` e scade il ${formatDate(data.expirationDate)}` : '';
+                    p.innerText = ownerInfo + expirationInfo;
+                    acqDiv.appendChild(p);
+                    break;
+
+                default:
+                    errDiv.innerText = `Stato del dominio non riconosciuto: ${data.status}`;
+                    break;
             }
         } else if (response.status === 400) {
             errDiv.innerText = 'Nome dominio non valido.';
         } else {
-            errDiv.innerText = 'Errore nella ricerca del dominio.';
+            errDiv.innerText = 'Errore imprevisto nella ricerca del dominio.';
         }
     } catch (error) {
         console.error('Errore di rete:', error);
         errDiv.innerText = 'Impossibile contattare il server.';
     }
 }
+
 
 // === 3. Recupera i domini dell'utente tramite operazioni di tipo REGISTRATION/RENEWAL ===
 async function getDomini(userId) {
@@ -113,6 +146,7 @@ async function getDomini(userId) {
         return [];
     }
 }
+
 // === 4. Aggiungi dominio alla tabella ===
 function addDomini(dominio, userId) {
     const tab = document.getElementById("domini-utente");
@@ -123,7 +157,8 @@ function addDomini(dominio, userId) {
     riga.insertCell().innerText = formatDate(dominio.lastContract?.expirationDate);
 
     const oggi = new Date();
-    const scadenza = new Date(dominio.lastContract?.expirationDate);
+    const scadenza = new Date(dominio.lastContract?.expirationDate + 'T00:00:00');
+   
     const cell = riga.insertCell();
 
     if (oggi <= scadenza) {
@@ -184,8 +219,7 @@ async function init() {
     const form = document.getElementById("cerca-domini");
     if (form) {
         form.addEventListener("submit", (e) => {
-            e.preventDefault();
-            cercaDominio(userId);
+            cercaDominio(e, userId); // Passa l'evento 'e' alla funzione
         });
     }
 

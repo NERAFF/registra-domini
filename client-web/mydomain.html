@@ -61,8 +61,8 @@
 
 		  row.insertCell().textContent = domain.name;
 		  // Use lastContract properties which match the Java model
-		  row.insertCell().textContent = new Date(domain.lastContract.acquisitionDate).toLocaleDateString('it-IT');
-		  row.insertCell().textContent = new Date(domain.lastContract.expirationDate).toLocaleDateString('it-IT');
+		  row.insertCell().textContent = new Date(domain.lastContract.acquisitionDate + 'T00:00:00').toLocaleDateString('it-IT');
+		  row.insertCell().textContent = new Date(domain.lastContract.expirationDate + 'T00:00:00').toLocaleDateString('it-IT');
 		  row.insertCell().textContent = domain.status;
 		});
 	  }
