@@ -284,17 +284,29 @@ public class Query {
 
 			for (SearchCondition condition : this.searchConditions) {
 				String fieldName = condition.getField();
-				String fieldValue = null;
-				if (fieldName.contains(".")) {
-					String[] parts = fieldName.split("\\.", 2);
-					if (document.containsKey(parts[0]) && document.get(parts[0]) instanceof JsonObject) {
-						JsonObject nested = document.getJsonObject(parts[0]);
-						if (nested.containsKey(parts[1])) {
-							fieldValue = jsonValueToString(nested.get(parts[1]));
+				String documentFieldValue = null;
+
+				// Logica per navigare campi annidati (es. "a.b.c")
+				String[] parts = fieldName.split("\\.");
+				javax.json.JsonValue tempValue = document;
+				for (String part : parts) {
+					if (tempValue != null && tempValue.getValueType() == javax.json.JsonValue.ValueType.OBJECT) {
+						JsonObject tempObj = (JsonObject) tempValue;
+						if (tempObj.containsKey(part)) {
+							tempValue = tempObj.get(part);
+						} else {
+							tempValue = null;
+							break;
 						}
 					}
-				} else if (document.containsKey(fieldName)) {
-					fieldValue = jsonValueToString(document.get(fieldName));
+				}
+				documentFieldValue = jsonValueToString(tempValue);
+
+				// Se il valore nel documento non corrisponde a quello della condizione,
+				// questo documento non è un match.
+				if (!condition.getValue().equals(documentFieldValue)) {
+					isMatch = false;
+					break; // Interrompi il ciclo per questo documento, non può essere un match.
 				}
 			}
 			if (isMatch) {
