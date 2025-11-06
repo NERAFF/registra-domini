@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="stylesheet" type="text/css" href="style.css">
+
+    <title>Domini</title>
+  </head>
+  <body data-server-no-reload>
+    <h2>Acquista </h2>
+    <p id="dominio"></p>
+    <br>
+
+    <form id="acquisto">
+      <label for="durata">Durata registrazione (in anni): </label>
+      <input type="number" id="durata" name="durata">
+      <br><br>
+      <label for="numero-carta">Numero carta: </label>
+      <input type="number" id="numero" name="numero">
+      <br><br>
+      <label for="scadenza">Data di scadenza: </label>
+      <input type="date" id="scadenza" name="scadenza">
+      <br><br>
+      <label for="cvv">CVV: </label>
+      <input type="number" id="cvv" name="cvv">
+      <br><br>
+      <label for="nome-intestatario">Nome intestatario: </label>
+      <input type="text" id="nome-intest" name="nome-intest">
+      <br><br>
+      <label for="cognome-intestatario">Cognome intestatario: </label>
+      <input type="text" id="cognome-intest" name="cognome-intest">
+      <br><br>
+      <button type="submit" id="acquista">Acquista</button>
+      <button type="button" id="indietro">Indietro</button>
+    </form>
+    
+    <p id="err"></p>
+
+    <script src="acquisto.js"></script>
+  </body>
+
+</html>
