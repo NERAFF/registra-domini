@@ -7,6 +7,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 
+import it.unimib.sd2024.connection.Queryer;
+
 public class User {
     public static final String EMAIL_REGEX = "[a-zA-Z0-9-\\.]+@" + Domain.DOMAIN_REGEX;
     public static final String PASSWORD_REGEX = "(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-_]).{8,}";
@@ -22,6 +24,23 @@ public class User {
 
     // ✅ Costruttore di default per JSON-B
     public User() {}
+
+    static {
+        // Blocco di inizializzazione per impostare lastId al valore massimo esistente.
+        // Questo previene la creazione di ID duplicati al riavvio del server.
+        System.out.println("Initializing User class: finding max user ID...");
+        User[] allUsers = Queryer.queryFindAllUsers();
+        if (allUsers != null && allUsers.length > 0) {
+            long maxId = 0L;
+            for (User user : allUsers) {
+                if (user.getId() > maxId) {
+                    maxId = user.getId();
+                }
+            }
+            lastId = maxId;
+        }
+        System.out.println("User.lastId initialized to: " + lastId);
+    }
 
     // Costruttore per registrazione
     public User(String name, String surname, String email, String password) {

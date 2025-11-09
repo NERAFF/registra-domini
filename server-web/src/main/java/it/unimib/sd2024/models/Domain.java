@@ -1,6 +1,5 @@
 package it.unimib.sd2024.models;
 
-import java.time.LocalDate;
 import java.util.regex.Pattern;
 
 /** CLASS Domain
@@ -16,35 +15,40 @@ import java.util.regex.Pattern;
 public class Domain {
 	public static final String DOMAIN_REGEX = "[a-zA-Z0-9][a-zA-Z0-9-]*\\.[a-zA-Z0-9][a-zA-Z0-9-]*"; // A first character only alphanumerical then alphanumerical characters and hyphens, followed by a dot and a first character only alphanumerical then alphanumerical characters and hyphens
 
+	private static final int RANDOM_PRICE_MIN = 10;
+	private static final int RANDOM_PRICE_MAX = 50;
+
 	private String name; /* Primary Key */
 	private DomainStatus status;
 	private Acquiring lastAcquiring;
 	private Contract lastContract;
-	private float monthlyCost;
-	private LocalDate lastUpdateDate;
+	private int yearCost;
 
 	 // ✅ Costruttore di default per JSON-B
-    public Domain() {}
+    public Domain() {
+		this.yearCost = 0;
+	}
 
-	public Domain(String name,  float monthlyCost) throws IllegalArgumentException {
-		if (!Pattern.matches("^" + DOMAIN_REGEX + "$", name)) {
-			throw new IllegalArgumentException("Invalid name value. Must match the DOMAIN_REGEX");
-		}
-		if (monthlyCost < 0) {
-			throw new IllegalArgumentException("Invalid monthly cost value. Must be greater than or equal to 0");
-		}
+	public Domain(String name) throws IllegalArgumentException {
 		this.name = name;
 		this.status = DomainStatus.AVAILABLE;
 		this.lastAcquiring = null;
 		this.lastContract = null;
-		this.monthlyCost = monthlyCost;
-		this.lastUpdateDate = LocalDate.now();
+		// Il costo viene generato UNA SOLA VOLTA qui.
+		this.yearCost = RANDOM_PRICE_MIN + (int)(Math.random() * (RANDOM_PRICE_MAX - RANDOM_PRICE_MIN + 1));
+	}
+
+	public static boolean isNameValid(String name) {
+		return Pattern.matches("^" + DOMAIN_REGEX + "$", name);
+	}
+
+	public static boolean isyearCostValid(int yearCost) {
+		return yearCost >= 0;
 	}
 
 	public void setName(String name) {
-		// Opzionale: valida il nome qui se vuoi
 		this.name = name;
-		this.lastUpdateDate = LocalDate.now(); // opzionale: aggiorna lastUpdateDate?
+		
 	}
 	public String getName() {
 		return this.name;
@@ -56,7 +60,6 @@ public class Domain {
 
 	public void setStatus(DomainStatus status) {
 		this.status = status;
-		this.lastUpdateDate = LocalDate.now();
 	}
 
 	public Acquiring getLastAcquiring() {
@@ -65,7 +68,6 @@ public class Domain {
 
 	public void setLastAcquiring(Acquiring lastAcquiring) {
 		this.lastAcquiring = lastAcquiring;
-		this.lastUpdateDate = LocalDate.now();
 	}
 
 	public Contract getLastContract() {
@@ -74,35 +76,33 @@ public class Domain {
 
 	public void setLastContract(Contract lastContract) {
 		this.lastContract = lastContract;
-		this.lastUpdateDate = LocalDate.now();
 	}
 
-	public float getMonthlyCost() {
-		return this.monthlyCost;
+	public int getyearCost() {
+		return this.yearCost;
 	}
 
-	public void setMonthlyCost(float monthlyCost) throws IllegalArgumentException {
-		if (monthlyCost < 0) {
-			throw new IllegalArgumentException("Invalid monthly cost value. Must be greater than or equal to 0,00");
-		}
-		this.monthlyCost = monthlyCost;
-		this.lastUpdateDate = LocalDate.now();
-	}
-
-	// Setter per lastUpdateDate (necessario per leggere dal JSON)
-	public void setLastUpdateDate(LocalDate lastUpdateDate) {
-		this.lastUpdateDate = lastUpdateDate;
-	}
-	public LocalDate getLastUpdateDate() {
-		return this.lastUpdateDate;
+	public void setyearCost(int cost) {
+		this.yearCost = cost;
 	}
 
 	public DomainInfo info() {
 		return new DomainInfo(this.name, this.status);
 	}
 
+	public DomainStatusInfo statusInfo() {
+		// REGISTERED 
+		if (this.status == DomainStatus.REGISTERED) {
+			return new DomainStatusInfo(this.status.name(), this.lastContract.getOwner(), this.lastContract.getExpirationDate());
+		}
+		// ACQUIRING
+		if (this.status == DomainStatus.ACQUIRING) {
+			return new DomainStatusInfo(this.status.name(), this.lastAcquiring.getUser(), null);
+		}
+		return new DomainStatusInfo(this.status.name(), null, null);
+	}
 	@Override
 	public String toString() {
-		return "Domain = {\n\tname=" + name + ",\n\tstatus=" + status + ",\n\tlastAcquiring=" + lastAcquiring + ",\n\tlastContract=" + lastContract + ",\n\tmonthlyCost=" + monthlyCost + ",\n\tlastUpdateDate=" + lastUpdateDate + "\n}";
+		return "Domain = {\n\tname=" + name + ",\n\tstatus=" + status + ",\n\tlastAcquiring=" + lastAcquiring + ",\n\tlastContract=" + lastContract + ",\n\tyearCost=" + yearCost + "\n}";
 	}
 }

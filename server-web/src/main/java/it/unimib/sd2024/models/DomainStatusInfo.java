@@ -1,34 +1,48 @@
 // it/unimib/sd2024/models/DomainStatusInfo.java
 package it.unimib.sd2024.models;
 
+import java.time.LocalDate;
+
 public class DomainStatusInfo {
     private String status;
-    private Long ownerId;
-    private String ownerName;
-    private String ownerSurname;
-    private String ownerEmail;
-    private String expirationDate; // solo se applicabile
-
+    private UserInfo owner;
+    private LocalDate expirationDate;
+    
     // Costruttore per AVAILABLE
     public DomainStatusInfo() {
         this.status = "AVAILABLE";
     }
 
     // Costruttore per non disponibile
-    public DomainStatusInfo(String status, Long ownerId, String ownerName, String ownerSurname, String ownerEmail, String expirationDate) {
+    public DomainStatusInfo(String status, UserInfo owner, LocalDate expirationDate) {
         this.status = status;
-        this.ownerId = ownerId;
-        this.ownerName = ownerName;
-        this.ownerSurname = ownerSurname;
-        this.ownerEmail = ownerEmail;
+        this.owner = owner;
         this.expirationDate = expirationDate;
     }
 
-    // Getter (obbligatori per JSON-B)
-    public String getStatus() { return status; }
-    public Long getOwnerId() { return ownerId; }
-    public String getOwnerName() { return ownerName; }
-    public String getOwnerSurname() { return ownerSurname; }
-    public String getOwnerEmail() { return ownerEmail; }
-    public String getExpirationDate() { return expirationDate; }
+    // Getter e Setter
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public UserInfo getOwner() {
+        return owner;
+    }
+
+    public void setOwner(UserInfo owner) {
+        this.owner = owner;
+    }
+
+    public LocalDate getExpirationDate() {
+        return expirationDate;
+    }
+
+    public void setExpirationDate(LocalDate expirationDate) {
+        this.expirationDate = expirationDate;
+    }
+
 }
