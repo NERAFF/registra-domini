@@ -28,17 +28,22 @@ public class DatabaseConnector {
 		return connectionPool.take();
 	}
 	
-	private static void releaseConnection(Socket socket) {
-		connectionPool.offer(socket);
+
+	private static void replaceConnection(Socket oldSocket) {
+		try {
+			if (oldSocket != null) oldSocket.close();
+		} catch (IOException e) {
+			System.err.println("[WARN] Error while closing old socket: " + e.getMessage());
+		}
+		try {
+			connectionPool.add(new Socket("localhost", 3030));
+		} catch (IOException e) {
+			System.err.println("[ERROR] Failed to create and add new socket to pool: " + e.getMessage());
+		}
 	}
 
 	private static String readFromServer(BufferedReader reader) throws IOException {
-		StringBuilder responseBuilder = new StringBuilder();
-		String outputLine;
-		while ((outputLine = reader.readLine()) != null) {
-			responseBuilder.append(outputLine);
-		}
-		return responseBuilder.toString();
+		return reader.readLine();
 	}
 	
 	public static String Communicate(String message) throws IOException {
@@ -63,11 +68,12 @@ public class DatabaseConnector {
 		String response = "";
 		try {
 			toServer.writeBytes(message+ "\n");
+			toServer.flush(); // Assicura che i dati vengano inviati immediatamente.
 			response = readFromServer(fromServer);
 		} catch (Exception e) {
 			System.err.println("[ERROR] Error while communicating with the database: " + e.getMessage());
 		} finally {
-			releaseConnection(socket);
+			replaceConnection(socket); // Chiudi la vecchia connessione e creane una nuova
 		}
 		return response; 
 	}

@@ -131,12 +131,10 @@ public class Queryer {
 		}
 
 		try {
-			System.out.println("start queryFindUserByEmail");
 			// ⚠️ ESCAPE dell'email per evitare injection (vedi punto 2)
 			String safeEmail = email.replace("\"", "\\\""); // minimo escape
 			String command = "SELECT \"users\"\nSEARCH \"email\" = \"" + safeEmail + "\"\nCOMMIT\n";
 			String response = DatabaseConnector.Communicate(command);
-			System.out.println("finish queryFindUserByEmail");
 
 			if (response == null) {
 				return new User[0];
@@ -144,8 +142,6 @@ public class Queryer {
 
 			if (response.startsWith("[SUCCESS]")) {
 				String jsonPart = response.split(": ", 2)[1]; // split solo su prima occorrenza
-				System.out.println("jsonPart: " + jsonPart);
-
 				if (jsonPart.trim().equals("[]")) {
 					return new User[0]; // array vuoto esplicito
 				}
@@ -221,44 +217,67 @@ public class Queryer {
 		}
 	}
 
+	/** queryFindAllUsers()
+	 *  Queries the database to retrieve all users.
+	 *  Returns an array of all users found.
+	**/
+	public static final User[] queryFindAllUsers() {
+		try {
+			String command = "SELECT \"users\"\nSEARCH *\nCOMMIT\n";
+			String response = DatabaseConnector.Communicate(command);
+
+			if (response == null) {
+				return new User[0];
+			}
+
+			if (response.startsWith("[SUCCESS]")) {
+				String jsonPart = response.split(": ", 2)[1];
+				if (jsonPart.trim().equals("[]")) {
+					return new User[0];
+				}
+				return JsonbBuilder.create().fromJson(jsonPart, User[].class);
+			} else {
+				return new User[0];
+			}
+		} catch (Exception e) {
+			System.err.println("[ERROR] Error in queryFindAllUsers: " + e.getMessage());
+			return new User[0];
+		}
+	}
+
 	/** queryFindOperations()
 	 *  Queries the database for a find operation on operations with the same user and domain as the ones passed as parameters.
 	 *  Returns the list of operations found or an empty list if not found.
 	**/
-	public static final Operation[] queryFindOperations(User userFilter, Domain domainFilter, OperationType operationTypeFilter) {
-		// Find the operations in the database
-		String response = "";
+	public static final Operation[] queryFindOperations(User userFilter) {
 		try {
-			// Prepare the query to find the operations with the filters passed
-			String query = "SELECT \"operations\"\nSEARCH ";
-			List<String> filters = new ArrayList<String>();
-			if (userFilter != null) {
-				filters.add("\"owner.id\" = \"" + userFilter.getId() + "\""); // This was correct, but good to confirm
+			// Se l'utente non è specificato, non ci sono operazioni da trovare.
+			if (userFilter == null) {
+				return new Operation[0];
 			}
-			if (domainFilter != null) {
-				filters.add("domain = \"" + domainFilter.getName() + "\"");
-			}
-			if (operationTypeFilter != null) {
-				filters.add("operationType = \"" + operationTypeFilter.name() + "\"");
-			}
-			if (filters.size() > 0) {
-				query += String.join(" AND ", filters);
-			}
-			query += "\nCOMMIT\n";
+			
+			String query = "SELECT operations\nSEARCH \"owner.id\" = \"" + userFilter.getId() + "\"\nCOMMIT\n";
+			String response = DatabaseConnector.Communicate(query);
 
-			// Retrieve the response from the database for the prepared query sent
-			response = DatabaseConnector.Communicate(query);
+			if (response == null) {
+				return new Operation[0];
+			}
+			if (response.startsWith("[SUCCESS]")) {
+				// Usa la stessa logica di split che funziona per le altre query.
+				String jsonPart = response.split(": ", 2)[1];
+				if (jsonPart.trim().equals("[]")) {
+					return new Operation[0];
+				}
+				Jsonb jsonb = JsonbBuilder.create();
+				return jsonb.fromJson(jsonPart, Operation[].class);
+			} else {
+				System.err.println("[ERROR] Database response for operations query: " + response);
+				return new Operation[0];
+			}
 		} catch (Exception e) {
-			System.err.println("[ERROR] Error while communicating with the database: " + e.getMessage());
-		}
-
-		if (response.startsWith("[SUCCESS]")) {
-			Jsonb jsonb = JsonbBuilder.create();
-			Operation[] operations = jsonb.fromJson(response.split(": ")[1], Operation[].class);
-			return operations;
-		} else {
-			System.err.println("[ERROR] Database response: " + response);
-			return null;
+			System.err.println("[ERROR] Error in queryFindOperations: " + e.getMessage());
+			e.printStackTrace();
+			return new Operation[0];
 		}
 	}
 
