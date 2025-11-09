@@ -1,68 +1,47 @@
-[o] Inserire una collezione (creare un file)
-[o] Eliminare una collezione (eliminare un file)
-[o] Selezionare una collezione (aprire un file)
-	[o] Inserire un documento (aggiungere una struttura dati alla mappa)
-	[o] Cercare un documento (cercare una struttura dati nella mappa)
-	[o] Eliminare un documento (cancellare una struttura dati dalla mappa)
+# Protocollo di Comunicazione con il Database
 
+Questo documento descrive il protocollo testuale per interagire con il database a file JSON.
 
-HashMap<Keys,Value>
+## Sintassi dei Comandi
 
+### Operazioni sulle Collezioni
+*   **Creare una collezione:**
+    `CREATE "<collection-name>" ON-KEY "<key-field>"`
+*   **Eliminare una collezione:**
+    `DELETE "<collection-name>"`
+*   **Selezionare una collezione:**
+    `SELECT "<collection-name>"`
 
-CREATE <collection-name> ON-KEY <data-field>
-DELETE <collection-name>
-SELECT <collection-name>
-	INSERT <data-structure>
-	SEARCH <data-field> <operand> <data-value> AND <data-field> <operand> <data-value>
-	REMOVE <data-value>
+### Operazioni sui Documenti (dopo una `SELECT`)
+*   **Inserire un documento:**
+    `INSERT <json-object>`
+*   **Cercare documenti:**
+    `SEARCH "<field>" = "<value>" [AND "<field>" = "<value>"]...`
+*   **Rimuovere un documento (per chiave):**
+    `REMOVE "<key-value>"`
 
+## Regole
 
-Constrains:
-A) <collection-name>, <data-field>, and all String <data-value> must be always quoted (like "property").
-B) <collection-name> and <data-field> cannot have whitespaces characters.
-C) <data-structure> must be a string json formatted (are excluded by the constraints A).
+1.  I nomi di collezioni, i campi e i valori stringa devono essere sempre racchiusi tra doppi apici (es. `"users"`).
+2.  I nomi di collezioni e campi non possono contenere spazi.
+3.  Il `<json-object>` per il comando `INSERT` deve essere una stringa valida in formato JSON.
 
-Examples:
-1)
-CREATE domains ON-KEY name
-2)
-CREATE operations ON-KEY id
-3)
-CREATE users ON-KEY id
-4)
-DELETE operations ON-KEY id
-5)
-SELECT users.json
-INSERT {"id":16,"name":"Billy Joe","surname":"Armstrong","age":27,"salary":2298.54,"retired":false}
-6)
-SELECT domains
-SEARCH name = "billy-joe.com"
-7)
-SELECT users
-SEARCH name = "Billy Joe" AND surname = "Armstrong"
-8)
-SELECT users
-REMOVE 16
+## Esempi
 
+1.  **Creare la collezione `domains` con `name` come chiave primaria:**
+    `CREATE "domains" ON-KEY "name"`
 
->
+2.  **Selezionare la collezione `users` e inserire un nuovo utente:**
+    `SELECT "users"`
+    `INSERT {"id":16,"name":"Billy","surname":"Joe","email":"billy@joe.com", ...}`
 
->
-DELETE domains.json
->
-CREATE users.json
+3.  **Cercare un dominio per nome:**
+    `SELECT "domains"`
+    `SEARCH "name" = "billy-joe.com"`
 
->
-SELECT users.json
-UPDATE user{}
->
-SELECT users.json
-SEARCH expressions[]
->
-SELECT users.json
-REMOVE userId
+4.  **Rimuovere un utente tramite il suo ID (che è la chiave primaria):**
+    `SELECT "users"`
+    `REMOVE "16"`
 
---> Ok, <
-
-SELECT users.json
-REMOVE userKey{}
+5.  **Eliminare l'intera collezione `operations`:**
+    `DELETE "operations"`

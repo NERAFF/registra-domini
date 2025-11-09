@@ -20,7 +20,7 @@ Ogni risorsa (domains, users, operations) fornita dal server ha un path dedicato
 		"domainName":"sementi-denditriche.com",
 		"requestAction":"ACQUIRED",
 		"userId":30,
-		"monthsDuration":12
+		"yearDuration":1
 	}
 	`
 > - **Response Status Code**:
@@ -48,7 +48,7 @@ Ogni risorsa (domains, users, operations) fornita dal server ha un path dedicato
 	`
 	{
 		"userId":30,
-		"monthsDuration":12
+		"yearsDuration":1
 	}
 	`
 > - **Response Status Code**:
@@ -82,7 +82,7 @@ Ogni risorsa (domains, users, operations) fornita dal server ha un path dedicato
 > #### POST `./users/signup`
 > - **Descrizione**: Permette di registrare un nuovo account utente.
 > - **Parametri Path**: `-`
-> - **Parametri Query**: `<type>`
+> - **Parametri Query**: `-`
 > - **Body**:
 	`
 	{
