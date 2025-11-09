@@ -6,19 +6,14 @@ public class NewDomainRequestBody {
 	private String domainName;
 	private DomainRequestAction requestAction;
 	private Long userId;
-	private int monthsDuration;
+	private Integer yearDuration; // Modificato da int a Integer per renderlo opzionale
 
-	public NewDomainRequestBody() {
-		this(null, null, null, 0);
-	}
-	public NewDomainRequestBody(String name, Long userId) {
-		this(name, DomainRequestAction.ACQUIRING, userId, 0);
-	}
-	public NewDomainRequestBody(String name, DomainRequestAction status, Long userId, int monthDuration) {
+	public NewDomainRequestBody() {}
+	public NewDomainRequestBody(String name, DomainRequestAction status, Long userId, Integer yearsDuration) {
 		this.domainName = name;
 		this.requestAction = status;
 		this.userId = userId;
-		this.monthsDuration = monthDuration;
+		this.yearDuration = yearsDuration;
 	}
 
 	public String getDomainName() {
@@ -45,16 +40,16 @@ public class NewDomainRequestBody {
 		this.userId = userId;
 	}
 
-	public int getMonthsDuration() {
-		return this.monthsDuration;
+	public Integer getYearDuration() {
+		return this.yearDuration;
 	}
 
-	public void setMonthsDuration(int monthDuration) {
-		this.monthsDuration = monthDuration;
+	public void setYearDuration(Integer yearDuration) {
+		this.yearDuration = yearDuration;
 	}
 
 	@Override
 	public String toString() {
-		return "NewDomainRequestBody = {\n\tdomainName=" + domainName + ",\n\trequestAction=" + requestAction + ",\n\tuserId=" + userId + ",\n\tmonthsDuration=" + monthsDuration + "\n}";
+		return "NewDomainRequestBody = {\n\tdomainName=" + domainName + ",\n\trequestAction=" + requestAction + ",\n\tuserId=" + userId + ",\n\tyearDuration=" + yearDuration + "\n}";
 	}
 }

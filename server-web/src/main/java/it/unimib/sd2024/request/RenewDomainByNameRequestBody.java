@@ -1,35 +1,34 @@
 package it.unimib.sd2024.request;
 
 public class RenewDomainByNameRequestBody {
-	private Long userId;
-	private int monthsDuration;
+    private Long userId;
+    private int yearsDuration;
 
-	public RenewDomainByNameRequestBody() {
-		this(null, 0);
-	}
-	public RenewDomainByNameRequestBody(Long userId, int monthDuration) {
-		this.userId = userId;
-		this.monthsDuration = monthDuration;
-	}
+    public RenewDomainByNameRequestBody() {
+    }
+    public RenewDomainByNameRequestBody(Long userId, int yearsDuration) {
+        this.userId = userId;
+        this.yearsDuration = yearsDuration;
+    }
 
-	public Long getUserId() {
-		return this.userId;
-	}
+    public Long getUserId() {
+        return this.userId;
+    }
 
-	public void setUser(Long userId) {
-		this.userId = userId;
-	}
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
 
-	public int getMonthsDuration() {
-		return this.monthsDuration;
-	}
+    public int getYearsDuration() {
+        return this.yearsDuration;
+    }
 
-	public void setMonthsDuration(int monthDuration) {
-		this.monthsDuration = monthDuration;
-	}
+    public void setYearsDuration(int yearsDuration) {
+        this.yearsDuration = yearsDuration;
+    }
 
-	@Override
-	public String toString() {
-		return "RenewDomainByNameRequestBody = {\n\tuserId=" + userId + ",\n\tmonthsDuration=" + monthsDuration + "\n}";
-	}
+    @Override
+    public String toString() {
+        return "RenewDomainByNameRequestBody = {\n\tuserId=" + userId + ",\n\tyearsDuration=" + yearsDuration + "\n}";
+    }
 }
