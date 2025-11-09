@@ -33,9 +33,7 @@ import it.unimib.sd2024.models.DomainRequestAction;
 **/
 @Path("domains")
 public class DomainResource {
-	private static final float RANDOM_PRICE_MIN = 0.10f;
-	private static final float RANDOM_PRICE_MAX = 25.00f;
-
+	
 	/** POST ./domains
 	 *  Acquires/Register a new domain for a user
 	**/
@@ -43,21 +41,37 @@ public class DomainResource {
 	@POST
 	@Consumes(MediaType.APPLICATION_JSON)
 	public Response newDomain(NewDomainRequestBody body) {
+		//print body for debug
+		System.out.println("newDomain: " + body);
+
 		// Check if the body is not null and has all the required fields valid
-		if (body == null || body.getRequestAction() == null || body.getDomainName() == null || body.getUserId() == null) {
+		if (body == null || body.getDomainName() == null || body.getUserId() == null) {
 			return Response.status(Status.BAD_REQUEST.getStatusCode(), "newDomain :: body must be indicated and with all fields valid").build();
-		}
+		}	
 
 		// Get the domain finding it on the db by name
-		Domain d = Queryer.queryFindDomainByName(body.getDomainName())[0];
-		
+		Domain[] domainResult = Queryer.queryFindDomainByName(body.getDomainName());
+		Domain d = (domainResult != null && domainResult.length > 0) ? domainResult[0] : null;
+
+		// Check if the domain is new or existing
+		boolean isNewDomain = (d == null);
+
+		// Get the user finding it on the db by id
+		User [] userResult = Queryer.queryFindUserById(body.getUserId());
+		User u = (userResult != null && userResult.length > 0) ? userResult[0] : null;
+
+		if (u == null) {
+			return Response.status(Status.NOT_FOUND.getStatusCode(), "newDomain :: user not found").build();
+		}
+
 		// Determine whether the user is acquiring a domain or has finished acquiring a domain
 		switch (body.getRequestAction()) {
 			case DomainRequestAction.ACQUIRING:
-				boolean isNewDomain = (d == null);
-				if (d == null) {
+				if (isNewDomain) {
 					// If the domain is not found, create a new domain with a random price
-					d = new Domain(body.getDomainName(), RANDOM_PRICE_MIN + new Random().nextFloat() * (RANDOM_PRICE_MAX - RANDOM_PRICE_MIN));
+					// and set last acquiring
+					d = new Domain(body.getDomainName());
+					d.setLastAcquiring(new Acquiring(u.info(), LocalDate.now()));
 				} else {
 					// If the domain is found, check if the domain can be acquired (it must be currently EXPIRED)
 					if (d.getStatus() != DomainStatus.EXPIRED) {
@@ -67,27 +81,31 @@ public class DomainResource {
 
 				// Update the domain status to ACQUIRING and set the last acquiring
 				d.setStatus(DomainStatus.ACQUIRING);
-				d.setLastAcquiring(new Acquiring(Queryer.queryFindUserById(body.getUserId())[0].info(), LocalDate.now()));
-				
+							
 				// Se il dominio è nuovo, inseriscilo. Altrimenti, aggiornalo.
 				if (isNewDomain) {
 					Queryer.queryInsertDomain(d);
 				} else {
 					Queryer.queryUpdateDomain(d);
 				}
-				break;
+				//ritorna il costo annuale del dominio
+				return Response.ok(d.info()).build();
 			case DomainRequestAction.ACQUIRED:
 				if (d == null || d.getStatus() != DomainStatus.ACQUIRING) {
 					return Response.status(Status.CONFLICT.getStatusCode(), "newDomain :: domain can not be acquired").build();
 				}
 				
-				// Check if the duration of the acquisition is at least 12 months (1 year) and at most 120 months (10 years)
-				if(body.getMonthsDuration() < 12 || body.getMonthsDuration() > 120) {
-					return Response.status(Status.BAD_REQUEST.getStatusCode(), "newDomain :: monthDuration must be between 12 and 120").build();
+				// Check if the duration of the acquisition is between 1 and 10 years
+				if(body.getYearDuration() < 1 || body.getYearDuration() > 10) {
+					return Response.status(Status.BAD_REQUEST.getStatusCode(), "newDomain :: yearDuration must be between 1 and 10").build();
 				}
+
+				// Check card and not save them
+				// NOT IMPLEMENTED
+
+				/// salva in operation
 				
-				// Check if the acquisition was started by the user
-				User u = Queryer.queryFindUserById(body.getUserId())[0];
+
 				if (u == null || !d.getLastAcquiring().getUser().id.equals(u.getId())) {
 					return Response.status(Status.FORBIDDEN.getStatusCode(), "newDomain :: user is not authorized to complete the domain acquisition").build();
 				}
@@ -96,18 +114,23 @@ public class DomainResource {
 				d.setStatus(DomainStatus.REGISTERED);
 				
 				LocalDate finishAcquisitionDate = LocalDate.now();
-				// Update the FinishAquisitionDate of the last acquiring
-				d.getLastAcquiring().setFinishAquisitionDate(finishAcquisitionDate);
+				final int originalYearCost = d.getyearCost(); // 1. Salva il costo originale
+
+				d.setLastAcquiring(null);
 
 				// Create the new contract and set it as the last contract of the domain
-				d.setLastContract(new Contract(u.info(), finishAcquisitionDate, finishAcquisitionDate.plusMonths(body.getMonthsDuration())));
+				d.setLastContract(new Contract(u.info(), finishAcquisitionDate, finishAcquisitionDate.plusYears(body.getYearDuration()).minusDays(1)));
 
 				// Create the related operation
-				Operation operation = new Operation(u, d, OperationType.REGISTRATION, 0);
+				Operation operation = new Operation(u, d, OperationType.REGISTRATION, body.getYearDuration()); // Usa il costo corretto
 
 				// Update the data on the db
-				Queryer.queryUpdateDomain(d);
+				Queryer.queryUpdateDomain(d); // 2. Esegui l'aggiornamento (che azzera yearCost nel file)
 				Queryer.queryInsertOperation(operation);
+
+				// 3. WORKAROUND: Ripristina il costo e aggiorna di nuovo il DB
+				d.setyearCost(originalYearCost);
+				Queryer.queryUpdateDomain(d);
 				break;
 			default:
 				return Response.status(Status.BAD_REQUEST.getStatusCode(), "newDomain :: status must be either ACQUIRING or ACQUIRED").build();
@@ -127,47 +150,26 @@ public class DomainResource {
 		if (domainName == null || domainName.isBlank()) {
 			return Response.status(Status.BAD_REQUEST).entity("Domain name is required").build();
 		}
-		Domain[] result = Queryer.queryFindDomainByName(domainName);
-		for (Domain d : result) {
-			System.out.println(d.toString());
+		if(!Domain.isNameValid(domainName)) {
+			return Response.status(Status.BAD_REQUEST).entity("Invalid domain name format").build();
 		}
+		Domain[] result = Queryer.queryFindDomainByName(domainName);
+		
 		Domain d = (result != null && result.length > 0) ? result[0] : null;
 		if (d == null) {
+			// Domain not found, return AVAILABLE status
 			return Response.ok(new DomainStatusInfo()).build(); // AVAILABLE
 		}
+
 		String status = d.getStatus().name();
 
-		// Caso 1: ACQUIRING → mostra chi sta acquistando
-		if ("ACQUIRING".equals(status) && d.getLastAcquiring() != null && d.getLastAcquiring().getUser() != null) {
-			UserInfo user = d.getLastAcquiring().getUser();
-			return Response.ok(new DomainStatusInfo(
-				status,
-				user.getId(),
-				user.getName(),
-				user.getSurname(),
-				user.getEmail(),
-				null // nessuna scadenza durante l'acquisto
-			)).build();
-		}
-
-		// Caso 2: REGISTERED o EXPIRED → mostra proprietario e scadenza
-		if (("REGISTERED".equals(status) || "EXPIRED".equals(status)) 
-			&& d.getLastContract() != null 
-			&& d.getLastContract().getOwner() != null) {
-			
-			UserInfo owner = d.getLastContract().getOwner();
-			String expDate = d.getLastContract().getExpirationDate() != null 
-				? d.getLastContract().getExpirationDate().toString() 
-				: null;
-
-			return Response.ok(new DomainStatusInfo(
-				status,
-				owner.getId(),
-				owner.getName(),
-				owner.getSurname(),
-				owner.getEmail(),
-				expDate
-			)).build();
+		// Per stati ACQUIRING, REGISTERED, o EXPIRED, ritorna le informazioni di stato
+		// che includono lo stato e il proprietario/acquirente.
+		if ("ACQUIRING".equals(status) || "REGISTERED".equals(status) || "EXPIRED".equals(status)) {
+			// Il metodo statusInfo() gestisce correttamente la logica per trovare
+			// l'utente sia da lastAcquiring che da lastContract.
+			//ritorna newDomainStatusInfo con tutte le info
+			return Response.ok(d.statusInfo()).build();
 		}
 		// Caso fallback (es. AVAILABLE ma trovato in DB)
 		return Response.ok(new DomainStatusInfo()).build();
@@ -181,40 +183,49 @@ public class DomainResource {
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response renewDomainByName(@PathParam("domainName") String domainName, RenewDomainByNameRequestBody body) {
-		// Get the domain finding it on the db by name
-		Domain d = Queryer.queryFindDomainByName(domainName)[0];
+		// Check if the body is not null and has all the required fields valid
+		if (body == null || body.getUserId() == null || body.getYearsDuration() <= 0) {
+			return Response.status(Status.BAD_REQUEST).entity("{\"error\":\"userId and a positive yearsDuration are required\"}").build();
+		}
 
-		// Check if the domain is correctly obtained
-		if (d == null || !d.getName().equals(domainName)) {
-			return Response.status(Status.NOT_FOUND.getStatusCode(), "renewDomainByName :: domain not found").build();
+		// Get the domain finding it on the db by name
+		Domain[] domainResult = Queryer.queryFindDomainByName(domainName);
+		Domain d = (domainResult != null && domainResult.length > 0) ? domainResult[0] : null;
+
+		if (d == null) {
+			return Response.status(Status.NOT_FOUND).entity("{\"error\":\"Domain not found\"}").build();
 		}
 
 		// Check if the domain can be renewed (it must be currently REGISTERED)
 		if (d.getStatus() != DomainStatus.REGISTERED) {
-			return Response.status(Status.FORBIDDEN.getStatusCode(), "renewDomainByName :: domain is not registered").build();
+			return Response.status(Status.FORBIDDEN).entity("{\"error\":\"Domain is not registered\"}").build();
 		}
 
 		// Get the user finding it on the db by id
-		User u = Queryer.queryFindUserById(body.getUserId())[0];
+		User[] userResult = Queryer.queryFindUserById(body.getUserId());
+		User u = (userResult != null && userResult.length > 0) ? userResult[0] : null;
 		if (u == null) {
-			return Response.status(Status.NOT_FOUND.getStatusCode(), "renewDomainByName :: user not found").build();
+			return Response.status(Status.NOT_FOUND).entity("{\"error\":\"User not found\"}").build();
 		}
 
 		// Check if the domain is owned by the user (last contract owner must be the user)
 		Contract lastContract = d.getLastContract();
-		if (!lastContract.getOwner().id.equals(u.getId())) {
-			return Response.status(Status.FORBIDDEN.getStatusCode(), "renewDomainByName :: user is not the owner of the domain").build();
+		if (lastContract == null || !lastContract.getOwner().id.equals(u.getId())) {
+			return Response.status(Status.FORBIDDEN).entity("{\"error\":\"User is not the owner of the domain\"}").build();
 		}
 
-		// Calculate the new acquisition and expiration dates
-		LocalDate newAcquisitionDate = lastContract.getExpirationDate().plusDays(1);
-		LocalDate newExpirationDate = newAcquisitionDate.plusMonths(body.getMonthsDuration());
+		// Calculate the new expiration date
+		LocalDate newExpirationDate = lastContract.getExpirationDate().plusYears(body.getYearsDuration());
 
-		// Create the new contract and set it as the last contract of the domain
-		d.setLastContract(new Contract(u.info(), newAcquisitionDate, newExpirationDate));
+		if (newExpirationDate.isAfter(lastContract.getAcquisitionDate().plusYears(10))) {
+			return Response.status(Status.BAD_REQUEST).entity("{\"error\":\"Renewal exceeds maximum registration period of 10 years from the original acquisition date\"}").build();
+		}
+
+		// Update the expiration date on the existing contract
+		lastContract.setExpirationDate(newExpirationDate);
 
 		// Create the related operation
-		Operation operation = new Operation(u, d, OperationType.RENEWAL, body.getMonthsDuration());
+		Operation operation = new Operation(u, d, OperationType.RENEWAL, body.getYearsDuration());
 
 		// Update the data on the db
 		Queryer.queryUpdateDomain(d);

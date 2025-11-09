@@ -1,17 +1,21 @@
 package it.unimib.sd2024.resources;
 
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
+import java.util.ArrayList;
+import java.util.List;
 
 import it.unimib.sd2024.models.User;
-import it.unimib.sd2024.connection.Queryer;
 import it.unimib.sd2024.models.Domain;
+import it.unimib.sd2024.connection.Queryer;
 import it.unimib.sd2024.models.Operation;
+import it.unimib.sd2024.models.OperationInfo;
 import it.unimib.sd2024.models.OperationType;
 
 /**
@@ -24,29 +28,35 @@ public class OperationResource {
 	**/
 	@GET
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response getOperationsList(@QueryParam("userId") Long userId, @QueryParam("domainName") String domainName, @QueryParam("operationType") OperationType operationType) {
-		// If specified, get the user by id, otherwise set it to null
-		User user = null;
-		if (userId != null) {
-			// Get the user finding it on the db by id
-			user = Queryer.queryFindUserById(userId)[0];
-			if (user == null) {
-				return Response.status(Status.NOT_FOUND.getStatusCode(), "getOperationsList :: user not found").build();
-			}
-		}
+	public Response getOperationsList(@QueryParam("userId") Long userId) {
 
-		// If specified, get the domain by name, otherwise set it to null
-		Domain domain = null;
-		if (domainName != null) {
-			// Get the domain finding it on the db by name
-			domain = Queryer.queryFindDomainByName(domainName)[0];
-			if (domain == null) {
-				return Response.status(Status.NOT_FOUND.getStatusCode(), "getOperationsList :: domain not found").build();
+		try {
+			// Se l'userId non è fornito, non possiamo filtrare.
+			// Potremmo restituire tutte le operazioni, ma è meglio richiedere l'ID.
+			if (userId == null) {
+				return Response.status(Status.BAD_REQUEST).entity("{\"error\":\"userId parameter is required\"}").build();
 			}
-		}
 
-		// Get the list of operations applying the filters		
-		Operation[] operations = Queryer.queryFindOperations(user, domain, operationType);
-		return Response.ok(operations).build();
+			// Cerca l'utente per ID.
+			User[] users = Queryer.queryFindUserById(userId);
+			if (users == null || users.length == 0) {
+				// Se l'utente non esiste, restituiamo una lista vuota perché non ci sono operazioni per lui.
+				return Response.ok(new Operation[0]).build();
+			}
+			User userFilter = users[0];
+
+			// Esegui la query per trovare tutte le operazioni per quell'utente.
+			Operation[] operations = Queryer.queryFindOperations(userFilter);
+
+			//ritorna operation.info di ogni operation
+			List<OperationInfo> operationInfos = new ArrayList<>();
+			for (Operation op : operations) {
+				operationInfos.add(op.info());
+			}
+			return Response.ok(operationInfos).build();
+			
+		} catch (Exception e) {
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Error retrieving operations: " + e.getMessage()).build();
+		}
 	}
 }
