@@ -31,7 +31,7 @@ async function lockDominio(dominio, userId) {
             body: JSON.stringify({
                 domainName: dominio,
                 userId: userId,
-                requestAction: "ACQUIRING"  // Avvia il lock
+                requestAction: "ACQUIRING"
             })
         });
 
@@ -102,15 +102,27 @@ async function ricercaDominio(dominio, userId) {
                     break;
 
                 case 'ACQUIRING':
+                    if (data.owner?.id && data.owner.id.toString() === userId) {
+                        risultatoDiv.innerText = 'Hai un acquisto in corso per questo dominio.';
+                        const p = document.createElement('p');
+                        p.innerText = `Puoi completare l'acquisto dalla pagina di acquisto.`;
+                        acqDiv.appendChild(p);
+                    } else {
+                        risultatoDiv.innerText = 'Dominio in fase di acquisizione da:';
+                        if (data.owner) {
+                            const p = document.createElement('p');
+                            p.innerText = `${data.owner.name} ${data.owner.surname} ${data.owner.email}`;
+                            acqDiv.appendChild(p);
+                        }
+                    }
+                    break;
                 case 'REGISTERED':
-                    risultatoDiv.innerText = data.status === 'ACQUIRING'
-                        ? 'Dominio in fase di acquisizione da:'
-                        : 'Il dominio è occupato da:';
-                    const p = document.createElement('p');
-                    const ownerInfo = `${data.ownerName || 'N/A'} ${data.ownerSurname || 'N/A'} (${data.ownerEmail || 'N/A'})`;
-                    const expirationInfo = data.expirationDate ? ` e scade il ${formatDate(data.expirationDate)}` : '';
-                    p.innerText = ownerInfo + expirationInfo;
-                    acqDiv.appendChild(p);
+                    risultatoDiv.innerText = 'Il dominio è stato già registrato:';
+                    if (data.owner) {
+                        const p = document.createElement('p');
+                        p.innerText = `${data.owner.name} ${data.owner.surname} ${data.owner.email} ${data.expirationDate}`;
+                        acqDiv.appendChild(p);
+                    }
                     break;
 
                 default:
@@ -166,10 +178,8 @@ function addDomini(dominio, userId) {
         btn.type = "button";
         btn.innerText = "Rinnova";
         btn.addEventListener("click", () => {
-            // NOTA: il rinnovo NON usa lock, ma una PUT diretta.
-            // Potresti voler reindirizzare a una pagina dedicata.
-            alert(`Rinnovo per ${dominio.name} non ancora implementato nel frontend.`);
-            // Oppure: window.location.href = `rinnovo.html?dominio=${dominio.name}&id=${userId}`;
+            // Reindirizza alla pagina di acquisto in modalità "rinnovo"
+            window.location.href = `acquisto.html?dominio=${encodeURIComponent(dominio.name)}&tipo=rinnovo`;
         });
         cell.appendChild(btn);
     } else {
@@ -197,16 +207,22 @@ function addOrdini(ordine) {
     const riga = tab.insertRow();
     // I campi provengono dal modello OperationInfo
     riga.insertCell().innerText = ordine.domainName || 'N/A';
-    riga.insertCell().innerText = formatDate(ordine.timestamp); // L'API non sembra avere 'timestamp' ma lo assumiamo
+    riga.insertCell().innerText = formatDate(ordine.date); // L'API non sembra avere 'timestamp' ma lo assumiamo
     riga.insertCell().innerText = ordine.type || 'N/A';
     riga.insertCell().innerText = ordine.cost ? `${ordine.cost.toFixed(2)} €` : 'N/A';
 }
 
 // === 6. Inizializzazione ===
 async function init() {
-    // Usiamo un userId statico come richiesto per il momento
-    const userId = 1;
+    // Recupera l'ID utente dal localStorage
+    const userId = localStorage.getItem('sessionId');
 
+    // Se non c'è un utente loggato, reindirizza al login
+    if (!userId) {
+        window.location.href = './auth/login.html';
+        return; // Interrompe l'esecuzione
+    }
+    
     // Carica e mostra i domini dell'utente
     const domini = await getDomini(userId);
     domini.forEach(d => addDomini(d, userId));
