@@ -1,4 +1,8 @@
-> TL;DR: This project is just an university exam, there's nothing interesting to look at. However, if you're curious and love wasting your time, here follows a nice-looking GPT-generated README:
+> **Note**: This is a fork of the original [MoraGames/registra-domini](https://github.com/MoraGames/registra-domini) project, developed for the "Sistemi Distribuiti" course. This version includes several fixes, refactoring, and functional improvements to the original codebase.
+
+---
+
+> TL;DR: The original project was a university exam. This fork fixes it and makes it fully functional. If you're curious, here follows a nice-looking GPT-generated README with added details on the improvements.
 
 # Registra Domini 🧠💻
 
@@ -35,6 +39,36 @@ The project simulates the process of building an entire data-driven web applicat
 
 ---
 
+## ✨ Fixes and Improvements
+
+This fork addresses several issues from the original project to create a more robust and functional application:
+
+- **Correct Purchase and Renewal Logic**: The frontend now correctly uses `POST /domains/new` for new purchases and `PUT /domains/{domainName}/renew` for renewals, resolving a critical bug.
+- **Functional "Acquista" Button**: Fixed the JavaScript logic that prevented the purchase button from working.
+- **Robust Domain Locking**: Implemented a reliable `unlockDominio` function that is triggered when the user navigates away from the purchase page, preventing domains from remaining stuck in the `ACQUIRING` state.
+- **Refactored Frontend Code**: Unified duplicate code for purchase and renewal operations into a single, cleaner function (`eseguiTransazioneDominio`).
+- **Improved User Session Handling**: The frontend now consistently retrieves the user ID from `localStorage`, making session management more secure and reliable.
+- **General Bug Fixes**: Corrected various minor bugs, such as the `window.onload` initialization, to improve overall stability.
+
+
+---
+
+## ⚠️ Security Disclaimer
+
+This project was developed with a primary focus on learning the architectural principles of distributed systems, not on implementing security best practices.
+
+**The system is NOT secure and must not be used in a production environment.**
+
+Specifically, user session management is implemented in a highly insecure manner:
+- The client stores the user's raw ID in `localStorage` after login.
+- This ID is then sent with every subsequent request to authenticate the user.
+- There are no secure session tokens (e.g., JWT), encryption, or server-side session validation mechanisms in place. This makes the system vulnerable to session hijacking and unauthorized access if the user ID is intercepted or manipulated.
+
+The goal was to build a working system from scratch, prioritizing the understanding of distributed components over security hardening.
+
+
+---
+
 ## 🏗️ Project Structure
 registra-domini/
 │
@@ -64,11 +98,29 @@ The intention is **not** to produce a production-ready system, but to **demonstr
 
 > ⚠️ Note: This project is experimental and educational — setup steps may vary depending on your environment.
 
-1. Clone the repository:
+1. **Clone the repository:**
    ```bash
-   git clone https://github.com/MoraGames/registra-domini.git
+   git clone https://github.com/neraf/registra-domini.git
    cd registra-domini
-2. Follow the specific setup instructions in the respective folders:
-   backend/README.md
-   frontend/README.md
-3. Start both backend and frontend, then open your browser to interact with the interface.
+   ```
+   *(Replace 'neraf' with your GitHub username if you are cloning your own fork)*
+
+2. **Build and run the Database:**
+   Open a terminal and run the following commands:
+   ```bash
+   cd database
+   mvn clean compile
+   mvn exec:java
+   ```
+   The database will start listening on port `3030`.
+
+3. **Build and run the Web Server:**
+   Open a **new terminal** and run the following commands:
+   ```bash
+   cd server-web
+   mvn jetty:run
+   ```
+   The web server will start, providing the REST API on port `8080`.
+
+4. **Open the Frontend:**
+   The frontend is located in the `client-web` directory. You can serve it using a simple local server. For example, if you have VS Code with the "Live Server" extension, you can right-click on `client-web/index.html` and select "Open with Live Server".
